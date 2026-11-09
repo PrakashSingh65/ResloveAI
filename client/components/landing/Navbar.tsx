@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Bot, LogIn, UserPlus } from "lucide-react"
+import { Bot, LogIn } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 
@@ -40,26 +40,16 @@ export function Navbar() {
           </div>
         </Link>
 
-        {/* Right Actions: Login & Sign Up */}
+        {/* Right Actions: Login */}
         <div className="flex items-center gap-2.5">
           <Link href="/login">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="font-semibold text-slate-700 hover:text-[#2563EB] hover:bg-slate-100 h-9 px-3.5 rounded-xl cursor-pointer"
-            >
-              <LogIn className="size-3.5 mr-1.5" />
-              Login
-            </Button>
-          </Link>
-          <Link href="/signup">
             <Button
               variant="default"
               size="sm"
               className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-sm shadow-[#2563EB]/20 font-semibold h-9 px-4 rounded-xl cursor-pointer"
             >
-              <UserPlus className="size-3.5 mr-1.5" />
-              Sign Up
+              <LogIn className="size-3.5 mr-1.5" />
+              Login
             </Button>
           </Link>
         </div>
