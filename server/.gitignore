@@ -104,6 +104,7 @@ logs/
 *.pid.lock
 temp/
 tmp/
+tests/
 
 # Document uploads & Vector caches (for RAG testing)
 uploads/
