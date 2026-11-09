@@ -51,6 +51,17 @@ export interface GoogleAuthUrlResponse {
   url: string
 }
 
+export interface GoogleSyncPayload {
+  session_token?: string
+  email?: string
+  name?: string
+}
+
+export const NEON_AUTH_URL = (
+  process.env.NEXT_PUBLIC_NEON_AUTH_URL ||
+  "https://ep-misty-cloud-beb057o4.neonauth.c-9.us-east-2.aws.neon.tech/neondb/auth"
+).replace(/\/$/, "")
+
 function notifyAuthChange() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("resolve-auth-change"))
@@ -135,7 +146,7 @@ export const authApi = {
   },
 
   /**
-   * Get Google OAuth Initiate URL
+   * Get Google OAuth Initiate URL via Backend
    * GET /auth/google
    */
   async getGoogleAuthUrl(callbackUrl?: string): Promise<string> {
@@ -145,13 +156,102 @@ export const authApi = {
   },
 
   /**
-   * Synchronize Google session token with backend
+   * Initiate Google OAuth directly with Neon Managed Better Auth in the browser.
+   * This ensures the browser receives and persists the '__Secure-neon-auth.session_challenge'
+   * cookie on the Neon Auth domain, which is required to complete the OAuth handshake.
+   */
+  async initiateGoogleOAuth(callbackUrl?: string): Promise<string> {
+    const targetCallback =
+      callbackUrl ||
+      (typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined)
+
+    try {
+      const response = await fetch(`${NEON_AUTH_URL}/sign-in/social`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          provider: "google",
+          callbackURL: targetCallback,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data?.url) {
+          return data.url
+        }
+      }
+    } catch (e) {
+      console.warn("Direct Neon Auth call failed, falling back to backend route:", e)
+    }
+
+    // Fallback to backend route if direct client call encounters any issue
+    return this.getGoogleAuthUrl(targetCallback)
+  },
+
+  /**
+   * Resolve session from Neon Auth using session verifier and browser challenge cookies
+   */
+  async getNeonSession(sessionVerifier?: string): Promise<{
+    user?: { id?: string; name?: string; email?: string; image?: string }
+    session?: { token?: string }
+  } | null> {
+    try {
+      const url = sessionVerifier
+        ? `${NEON_AUTH_URL}/get-session?neon_auth_session_verifier=${encodeURIComponent(sessionVerifier)}`
+        : `${NEON_AUTH_URL}/get-session`
+
+      let response = await fetch(url, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+        },
+      })
+
+      if (response.ok) {
+        const text = await response.text()
+        if (text && text !== "null") {
+          return JSON.parse(text)
+        }
+      }
+
+      // If verifier was already consumed, try plain /get-session with browser cookies
+      if (sessionVerifier) {
+        response = await fetch(`${NEON_AUTH_URL}/get-session`, {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        })
+
+        if (response.ok) {
+          const text = await response.text()
+          if (text && text !== "null") {
+            return JSON.parse(text)
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to retrieve session from Neon Auth directly:", e)
+    }
+    return null
+  },
+
+  /**
+   * Synchronize Google session token with ResolveAI backend
    * POST /auth/google/sync
    */
-  async syncGoogleSession(sessionToken?: string): Promise<AuthResponse> {
-    const response = await apiClient.post<AuthResponse>("/auth/google/sync", {
-      session_token: sessionToken,
-    })
+  async syncGoogleSession(payload?: string | GoogleSyncPayload): Promise<AuthResponse> {
+    const body: GoogleSyncPayload =
+      typeof payload === "string" ? { session_token: payload } : payload || {}
+
+    const response = await apiClient.post<AuthResponse>("/auth/google/sync", body)
     if (response.data?.user && typeof window !== "undefined") {
       localStorage.setItem("resolve_user", JSON.stringify(response.data.user))
       notifyAuthChange()

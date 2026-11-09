@@ -50,8 +50,24 @@ function AuthCallbackContent() {
         ""
 
       try {
-        // 3. Synchronize with backend API
-        const response = await authApi.syncGoogleSession(sessionVerifier || undefined)
+        // 3. First, try to resolve session directly from Neon Auth with stored browser cookies
+        let neonSession: {
+          user?: { id?: string; name?: string; email?: string; image?: string }
+          session?: { token?: string }
+        } | null = null
+
+        if (sessionVerifier) {
+          neonSession = await authApi.getNeonSession(sessionVerifier)
+        }
+
+        // 4. Synchronize with ResolveAI backend API
+        const syncPayload = {
+          session_token: neonSession?.session?.token || sessionVerifier || undefined,
+          email: neonSession?.user?.email,
+          name: neonSession?.user?.name,
+        }
+
+        const response = await authApi.syncGoogleSession(syncPayload)
 
         if (!isMounted) return
 
@@ -59,10 +75,10 @@ function AuthCallbackContent() {
           setUser(response.user)
           setStatus("success")
 
-          // Auto-redirect to home or dashboard after 1.5 seconds
+          // Auto-redirect to landing page after 1.2 seconds
           const timer = setTimeout(() => {
             router.push("/")
-          }, 1500)
+          }, 1200)
 
           return () => clearTimeout(timer)
         } else {

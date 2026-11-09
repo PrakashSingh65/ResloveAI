@@ -83,11 +83,12 @@ apiClient.interceptors.response.use(
       _retry?: boolean
     }
 
-    // Skip retry for login/register endpoints to prevent infinite loops on invalid credentials
+    // Skip retry for auth endpoints to prevent infinite loops or misleading errors on auth failure
     const isAuthEndpoint =
       originalRequest?.url?.includes("/auth/login") ||
       originalRequest?.url?.includes("/auth/register") ||
-      originalRequest?.url?.includes("/auth/refresh")
+      originalRequest?.url?.includes("/auth/refresh") ||
+      originalRequest?.url?.includes("/auth/google")
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {

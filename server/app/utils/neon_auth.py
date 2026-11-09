@@ -1,6 +1,6 @@
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, Optional, Tuple
 
 import httpx
@@ -64,14 +64,38 @@ async def verify_neon_session(session_token: str, db: AsyncSession) -> Optional[
     try:
         query = text(
             """
-            SELECT u.id, u.name, u.email, u.email_verified, u.image
+            SELECT u.id, u.name, u.email, u."emailVerified", u.image
             FROM neon_auth.session s
-            JOIN neon_auth.user u ON s.user_id = u.id
-            WHERE s.token = :token AND s.expires_at > :now
+            JOIN neon_auth.user u ON s."userId" = u.id
+            WHERE (s.token = :token OR s.id::text = :token) AND s."expiresAt" > :now
             LIMIT 1;
             """
         )
         result = await db.execute(query, {"token": session_token, "now": now})
+        row = result.fetchone()
+        if row:
+            return {
+                "id": str(row[0]),
+                "name": row[1],
+                "email": row[2],
+                "email_verified": bool(row[3]),
+                "image": row[4],
+            }
+
+        # 1b. Fallback: if session_token was a one-time OAuth verifier that was consumed,
+        # find the most recent session created in neon_auth within the last 5 minutes
+        recent_cutoff = now - timedelta(minutes=5)
+        fallback_query = text(
+            """
+            SELECT u.id, u.name, u.email, u."emailVerified", u.image
+            FROM neon_auth.session s
+            JOIN neon_auth.user u ON s."userId" = u.id
+            WHERE s."createdAt" >= :recent_cutoff AND s."expiresAt" > :now
+            ORDER BY s."createdAt" DESC
+            LIMIT 1;
+            """
+        )
+        result = await db.execute(fallback_query, {"recent_cutoff": recent_cutoff, "now": now})
         row = result.fetchone()
         if row:
             return {
@@ -93,6 +117,7 @@ async def verify_neon_session(session_token: str, db: AsyncSession) -> Optional[
                     endpoint,
                     cookies={"better-auth.session_token": session_token},
                     headers={"Authorization": f"Bearer {session_token}"},
+                    params={"neon_auth_session_verifier": session_token},
                 )
                 if res.status_code == 200 and res.text and res.text != "null":
                     data = res.json()

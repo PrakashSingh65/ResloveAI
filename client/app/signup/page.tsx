@@ -251,7 +251,7 @@ export default function SignUpPage() {
     setIsGoogleLoading(true)
     setApiError(null)
     try {
-      const url = await authApi.getGoogleAuthUrl()
+      const url = await authApi.initiateGoogleOAuth()
       if (url) {
         window.location.href = url
       }
