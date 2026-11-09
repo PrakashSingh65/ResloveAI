@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { Bot, LogIn } from "lucide-react"
+import Link from "next/link"
+import { Bot, LogIn, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 
@@ -10,8 +11,8 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b border-[#E2E8F0] bg-white/90 backdrop-blur-md transition-all">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand Logo */}
-        <a
-          href="#"
+        <Link
+          href="/"
           className="flex items-center gap-3 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] rounded-lg p-1"
         >
           <div className="relative flex size-10 items-center justify-center rounded-xl bg-gradient-to-tr from-[#2563EB] to-[#8B5CF6] text-white shadow-md shadow-[#2563EB]/25 transition-transform group-hover:scale-105">
@@ -37,20 +38,30 @@ export function Navbar() {
               AI Support with Smart Human Handoff
             </span>
           </div>
-        </a>
+        </Link>
 
-        {/* Right Action: Login Button */}
-        <div className="flex items-center gap-3">
-          <a href="/login">
+        {/* Right Actions: Login & Sign Up */}
+        <div className="flex items-center gap-2.5">
+          <Link href="/login">
             <Button
-              variant="default"
+              variant="ghost"
               size="sm"
-              className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-sm font-semibold h-9 px-4 rounded-xl cursor-pointer"
+              className="font-semibold text-slate-700 hover:text-[#2563EB] hover:bg-slate-100 h-9 px-3.5 rounded-xl cursor-pointer"
             >
               <LogIn className="size-3.5 mr-1.5" />
               Login
             </Button>
-          </a>
+          </Link>
+          <Link href="/signup">
+            <Button
+              variant="default"
+              size="sm"
+              className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-sm shadow-[#2563EB]/20 font-semibold h-9 px-4 rounded-xl cursor-pointer"
+            >
+              <UserPlus className="size-3.5 mr-1.5" />
+              Sign Up
+            </Button>
+          </Link>
         </div>
       </div>
     </header>
