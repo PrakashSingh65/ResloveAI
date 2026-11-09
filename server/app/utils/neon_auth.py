@@ -83,8 +83,8 @@ async def verify_neon_session(session_token: str, db: AsyncSession) -> Optional[
             }
 
         # 1b. Fallback: if session_token was a one-time OAuth verifier that was consumed,
-        # find the most recent session created in neon_auth within the last 5 minutes
-        recent_cutoff = now - timedelta(minutes=5)
+        # find the most recent session created in neon_auth within the last 30 minutes
+        recent_cutoff = now - timedelta(minutes=30)
         fallback_query = text(
             """
             SELECT u.id, u.name, u.email, u."emailVerified", u.image
