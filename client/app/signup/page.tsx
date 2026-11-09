@@ -20,12 +20,14 @@ import {
   Users,
   Check,
   ChevronDown,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { COUNTRIES, GENDER_OPTIONS } from "@/lib/location-data"
+import { authApi, getApiErrorMessage, UserProfile, GenderType, UserRegisterPayload } from "@/lib/api"
 
 export default function SignUpPage() {
   const [formData, setFormData] = React.useState({
@@ -45,10 +47,13 @@ export default function SignUpPage() {
   })
 
   const [errors, setErrors] = React.useState<Record<string, string>>({})
+  const [apiError, setApiError] = React.useState<string | null>(null)
   const [showPassword, setShowPassword] = React.useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = React.useState(false)
   const [isSubmitted, setIsSubmitted] = React.useState(false)
+  const [createdUser, setCreatedUser] = React.useState<UserProfile | null>(null)
 
   // Current states based on selected country
   const currentCountry = COUNTRIES.find((c) => c.name === formData.country)
@@ -77,20 +82,21 @@ export default function SignUpPage() {
       type === "checkbox" ? (e.target as HTMLInputElement).checked : value
 
     setFormData((prev) => ({ ...prev, [name]: val }))
+    if (apiError) setApiError(null)
 
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }))
     }
   }
 
-  // Password strength check
+  // Password strength check (aligned with backend Argon2 + complexity validator)
   const getPasswordStrength = (pass: string) => {
     let score = 0
     if (!pass) return { score: 0, label: "Empty", color: "bg-slate-200" }
     if (pass.length >= 8) score += 1
     if (/[A-Z]/.test(pass)) score += 1
+    if (/[a-z]/.test(pass)) score += 1
     if (/[0-9]/.test(pass)) score += 1
-    if (/[^A-Za-z0-9]/.test(pass)) score += 1
 
     switch (score) {
       case 1:
@@ -167,10 +173,17 @@ export default function SignUpPage() {
       newErrors.phone = "Enter a valid phone number (7-15 digits)"
     }
 
+    // Backend validation requires: min 8 chars, 1 uppercase, 1 lowercase, 1 digit
     if (!formData.password) {
       newErrors.password = "Password is required"
     } else if (formData.password.length < 8) {
       newErrors.password = "Password must be at least 8 characters long"
+    } else if (!/[A-Z]/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one uppercase letter"
+    } else if (!/[a-z]/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one lowercase letter"
+    } else if (!/\d/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one digit"
     }
 
     if (!formData.confirmPassword) {
@@ -187,11 +200,20 @@ export default function SignUpPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const mapGender = (g: string): GenderType | undefined => {
+    const val = g.toLowerCase()
+    if (val === "male") return "male"
+    if (val === "female") return "female"
+    if (val === "prefer not to say" || val === "prefer_not_to_say") return "prefer_not_to_say"
+    if (val === "non-binary" || val === "other") return "other"
+    return "other"
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setApiError(null)
 
     if (!validateForm()) {
-      // Scroll to the first error
       const firstErrorField = document.querySelector("[aria-invalid='true']")
       if (firstErrorField) {
         firstErrorField.scrollIntoView({ behavior: "smooth", block: "center" })
@@ -201,11 +223,42 @@ export default function SignUpPage() {
 
     setIsSubmitting(true)
 
-    // Simulate API registration call
-    setTimeout(() => {
-      setIsSubmitting(false)
+    try {
+      const payload: UserRegisterPayload = {
+        first_name: formData.firstName.trim(),
+        last_name: formData.lastName.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        date_of_birth: formData.dateOfBirth || null,
+        country: formData.country || null,
+        city: formData.city?.trim() || null,
+        phone_no: formData.phone ? `${formData.phoneCountryCode} ${formData.phone.trim()}` : null,
+        gender: mapGender(formData.gender),
+      }
+
+      const response = await authApi.register(payload)
+      setCreatedUser(response.user)
       setIsSubmitted(true)
-    }, 1200)
+    } catch (err) {
+      const message = getApiErrorMessage(err)
+      setApiError(message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleGoogleSignUp = async () => {
+    setIsGoogleLoading(true)
+    setApiError(null)
+    try {
+      const url = await authApi.getGoogleAuthUrl()
+      if (url) {
+        window.location.href = url
+      }
+    } catch (err) {
+      setApiError(getApiErrorMessage(err))
+      setIsGoogleLoading(false)
+    }
   }
 
   // Max date for DOB (today)
@@ -368,35 +421,37 @@ export default function SignUpPage() {
                     Account Created Successfully!
                   </h2>
                   <p className="text-sm text-slate-600 max-w-md mx-auto">
-                    Welcome to ResolveAI, <strong className="text-[#0F172A]">{formData.firstName} {formData.lastName}</strong>! We have sent a confirmation email to <span className="text-[#2563EB] font-medium">{formData.email}</span>.
+                    Welcome to ResolveAI, <strong className="text-[#0F172A]">{createdUser?.first_name || formData.firstName} {createdUser?.last_name || formData.lastName}</strong>! Your account has been registered with email <span className="text-[#2563EB] font-medium">{createdUser?.email || formData.email}</span>.
                   </p>
                 </div>
 
                 <div className="rounded-xl bg-slate-50 p-4 border border-slate-200 text-left text-xs text-slate-600 space-y-1.5 max-w-md mx-auto">
                   <div className="flex justify-between">
                     <span className="font-semibold text-slate-700">Name:</span>
-                    <span>{formData.firstName} {formData.lastName}</span>
+                    <span>{createdUser?.first_name || formData.firstName} {createdUser?.last_name || formData.lastName}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="font-semibold text-slate-700">Email:</span>
-                    <span>{formData.email}</span>
+                    <span>{createdUser?.email || formData.email}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="font-semibold text-slate-700">Phone:</span>
-                    <span>{formData.phoneCountryCode} {formData.phone}</span>
+                    <span>{createdUser?.phone_no || `${formData.phoneCountryCode} ${formData.phone}`}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="font-semibold text-slate-700">Location:</span>
-                    <span>{formData.city}, {formData.state}, {formData.country}</span>
+                    <span>{createdUser?.city || formData.city}, {createdUser?.country || formData.country}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="font-semibold text-slate-700">Gender:</span>
-                    <span>{formData.gender}</span>
+                    <span className="capitalize">{createdUser?.gender || formData.gender}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="font-semibold text-slate-700">Date of Birth:</span>
-                    <span>{formData.dateOfBirth}</span>
-                  </div>
+                  {formData.dateOfBirth && (
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-slate-700">Date of Birth:</span>
+                      <span>{createdUser?.date_of_birth || formData.dateOfBirth}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
@@ -414,6 +469,7 @@ export default function SignUpPage() {
                     size="lg"
                     onClick={() => {
                       setIsSubmitted(false)
+                      setCreatedUser(null)
                       setFormData((prev) => ({
                         ...prev,
                         password: "",
@@ -445,30 +501,47 @@ export default function SignUpPage() {
                   </p>
                 </div>
 
+                {/* API Error Alert */}
+                {apiError && (
+                  <div
+                    role="alert"
+                    className="mb-5 p-3.5 rounded-xl bg-red-50/90 border border-red-200 text-xs text-red-700 flex items-start gap-2.5 animate-in fade-in duration-150"
+                  >
+                    <AlertCircle className="size-4 text-red-600 shrink-0 mt-0.5" />
+                    <div className="flex-1 font-medium leading-relaxed">{apiError}</div>
+                  </div>
+                )}
+
                 {/* Quick Google Sign-Up Action */}
                 <div className="space-y-4 mb-6">
                   <button
                     type="button"
-                    className="w-full flex h-11 items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-xs sm:text-sm font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 active:scale-[0.99] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] focus-visible:border-transparent"
+                    onClick={handleGoogleSignUp}
+                    disabled={isGoogleLoading || isSubmitting}
+                    className="w-full flex h-11 items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-xs sm:text-sm font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 active:scale-[0.99] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] focus-visible:border-transparent disabled:opacity-60"
                   >
-                    <svg className="size-4.5" viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        fill="#4285F4"
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      />
-                      <path
-                        fill="#34A853"
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      />
-                      <path
-                        fill="#FBBC05"
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                      />
-                      <path
-                        fill="#EA4335"
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                      />
-                    </svg>
+                    {isGoogleLoading ? (
+                      <Loader2 className="size-4 animate-spin text-[#2563EB]" />
+                    ) : (
+                      <svg className="size-4.5" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          fill="#4285F4"
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                        />
+                      </svg>
+                    )}
                     <span>Sign up with Google</span>
                   </button>
 
@@ -962,20 +1035,20 @@ export default function SignUpPage() {
                             Uppercase letter
                           </span>
                           <span className="flex items-center gap-1">
+                            {/[a-z]/.test(formData.password) ? (
+                              <Check className="size-3 text-emerald-600 font-bold" />
+                            ) : (
+                              <span className="size-1.5 rounded-full bg-slate-400 inline-block mr-1"></span>
+                            )}
+                            Lowercase letter
+                          </span>
+                          <span className="flex items-center gap-1">
                             {/[0-9]/.test(formData.password) ? (
                               <Check className="size-3 text-emerald-600 font-bold" />
                             ) : (
                               <span className="size-1.5 rounded-full bg-slate-400 inline-block mr-1"></span>
                             )}
                             At least 1 number
-                          </span>
-                          <span className="flex items-center gap-1">
-                            {/[^A-Za-z0-9]/.test(formData.password) ? (
-                              <Check className="size-3 text-emerald-600 font-bold" />
-                            ) : (
-                              <span className="size-1.5 rounded-full bg-slate-400 inline-block mr-1"></span>
-                            )}
-                            Special character
                           </span>
                         </div>
                       </div>
@@ -1022,12 +1095,12 @@ export default function SignUpPage() {
                   <Button
                     type="submit"
                     size="lg"
-                    disabled={isSubmitting}
-                    className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] active:scale-[0.99] text-white font-bold h-12 rounded-xl shadow-md shadow-[#2563EB]/25 text-sm transition-all cursor-pointer"
+                    disabled={isSubmitting || isGoogleLoading}
+                    className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] active:scale-[0.99] text-white font-bold h-12 rounded-xl shadow-md shadow-[#2563EB]/25 text-sm transition-all cursor-pointer disabled:opacity-60"
                   >
                     {isSubmitting ? (
                       <span className="flex items-center gap-2" role="status">
-                        <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
+                        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                         <span>Creating Account...</span>
                       </span>
                     ) : (
