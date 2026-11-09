@@ -1,6 +1,8 @@
 from app.schemas.auth import (
     AuthResponse,
     ChangePasswordRequest,
+    GoogleAuthUrlResponse,
+    GoogleSyncRequest,
     MessageResponse,
     TokenResponse,
     UserLogin,
@@ -14,6 +16,8 @@ __all__ = [
     "UserLogin",
     "UserResponse",
     "TokenResponse",
+    "GoogleAuthUrlResponse",
+    "GoogleSyncRequest",
     "ChangePasswordRequest",
     "MessageResponse",
 ]

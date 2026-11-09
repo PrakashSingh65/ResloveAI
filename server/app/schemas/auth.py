@@ -130,6 +130,17 @@ class ChangePasswordRequest(BaseModel):
         return v
 
 
+class GoogleAuthUrlResponse(BaseModel):
+    url: str = Field(..., description="Google OAuth authorization URL generated via Neon Better Auth")
+
+
+class GoogleSyncRequest(BaseModel):
+    session_token: Optional[str] = Field(
+        default=None,
+        description="Better Auth session token from Neon (if not passed in cookie)",
+    )
+
+
 class MessageResponse(BaseModel):
     message: str
     detail: Optional[str] = None

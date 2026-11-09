@@ -100,13 +100,17 @@ class Settings(BaseSettings):
             return self.COOKIE_SECURE
         return self.ENVIRONMENT not in ["development", "testing"]
 
+    # Neon Better Auth Configuration
+    NEON_AUTH_BASE_URL: str = ""
+    FRONTEND_URL: str = "http://localhost:3000"
+
     # AI Configuration (Optional)
     GEMINI_API_KEY: str = ""
     EMBEDDING_MODEL: str = "text-embedding-004"
     VECTOR_DIMENSION: int = 768
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=("server/.env", ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=True,

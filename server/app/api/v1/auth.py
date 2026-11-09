@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -14,6 +15,8 @@ from app.models.user import RefreshToken, User
 from app.schemas.auth import (
     AuthResponse,
     ChangePasswordRequest,
+    GoogleAuthUrlResponse,
+    GoogleSyncRequest,
     MessageResponse,
     UserLogin,
     UserRegister,
@@ -22,8 +25,11 @@ from app.schemas.auth import (
 from app.utils import (
     clear_auth_cookies,
     ensure_utc,
+    get_neon_social_auth_url,
     issue_and_store_tokens,
     set_auth_cookies,
+    sync_oauth_user,
+    verify_neon_session,
 )
 
 logger = logging.getLogger(__name__)
@@ -354,4 +360,139 @@ async def change_password(
 
     return MessageResponse(
         message="Password updated successfully. All sessions terminated. Please log in with your new password."
+    )
+
+
+# ==============================================================================
+# Google OAuth with Neon Managed Better Auth
+# ==============================================================================
+
+
+@router.get(
+    "/google",
+    summary="Initiate Google OAuth with Neon Better Auth",
+    description="Generates the Google OAuth authorization URL via Neon Managed Better Auth. If redirect=true, redirects browser directly.",
+)
+async def google_auth_initiate(
+    redirect: bool = False,
+    callback_url: Optional[str] = None,
+):
+    try:
+        auth_url = await get_neon_social_auth_url(
+            provider="google",
+            callback_url=callback_url,
+        )
+    except Exception as e:
+        logger.error(f"Failed to get Google OAuth URL: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to initiate Google OAuth: {str(e)}",
+        )
+
+    if redirect:
+        return RedirectResponse(url=auth_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
+
+    return GoogleAuthUrlResponse(url=auth_url)
+
+
+@router.get(
+    "/google/callback",
+    summary="Google OAuth Browser Callback",
+    description="Callback endpoint called after completing Google sign-in. Syncs user with public.users, sets auth cookies, and redirects to frontend.",
+)
+async def google_auth_callback(
+    request: Request,
+    response: Response,
+    token: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    # 1. Look for session token from cookie or query param
+    session_token = request.cookies.get("better-auth.session_token") or token
+
+    if not session_token:
+        # Check authorization code or redirect if failed
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Session token missing from Neon Auth callback.",
+        )
+
+    session_info = await verify_neon_session(session_token=session_token, db=db)
+    if not session_info or not session_info.get("email"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired Neon Better Auth session.",
+        )
+
+    # 2. Sync or create user in our users table
+    user = await sync_oauth_user(
+        email=session_info["email"],
+        name=session_info.get("name"),
+        db=db,
+    )
+
+    # 3. Issue and set our application's JWT HttpOnly cookies
+    access_token, refresh_token, _ = await issue_and_store_tokens(
+        user=user, db=db, request=request
+    )
+    await db.commit()
+
+    redirect_url = f"{settings.FRONTEND_URL}/dashboard"
+    redirect_response = RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
+    set_auth_cookies(response=redirect_response, access_token=access_token, refresh_token=refresh_token)
+    return redirect_response
+
+
+@router.post(
+    "/google/sync",
+    response_model=AuthResponse,
+    summary="Sync Google Login Session with Backend",
+    description="Synchronizes a completed Google Better Auth session token with the backend users table and sets JWT cookies.",
+)
+async def google_auth_sync(
+    request: Request,
+    response: Response,
+    payload: Optional[GoogleSyncRequest] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    # 1. Retrieve session token from cookie or payload
+    session_token = (
+        request.cookies.get("better-auth.session_token")
+        or (payload.session_token if payload else None)
+    )
+
+    if not session_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Better Auth session token not provided in cookie or payload.",
+        )
+
+    # 2. Verify with Neon Better Auth
+    session_info = await verify_neon_session(session_token=session_token, db=db)
+    if not session_info or not session_info.get("email"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not verify Google authentication session with Neon Auth.",
+        )
+
+    # 3. Sync or create user in application users table
+    user = await sync_oauth_user(
+        email=session_info["email"],
+        name=session_info.get("name"),
+        db=db,
+    )
+
+    # 4. Issue and store application JWT tokens & set cookies
+    access_token, refresh_token, _ = await issue_and_store_tokens(
+        user=user, db=db, request=request
+    )
+    await db.commit()
+    await db.refresh(user)
+
+    set_auth_cookies(response=response, access_token=access_token, refresh_token=refresh_token)
+
+    return AuthResponse(
+        message="Google account synced successfully. Authentication cookies set.",
+        user=UserResponse.model_validate(user),
+        access_token=access_token,
+        refresh_token=refresh_token,
     )
