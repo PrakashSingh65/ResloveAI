@@ -19,10 +19,9 @@ import { Badge } from "@/components/ui/badge"
 export function Hero() {
   return (
     <section className="relative overflow-hidden pt-12 pb-20 lg:pt-20 lg:pb-28">
-      {/* Background Decorative Gradients */}
-      <div className="pointer-events-none absolute inset-0 -z-10 flex items-center justify-center">
-        <div className="h-[480px] w-[640px] rounded-full bg-gradient-to-tr from-[#2563EB]/15 to-[#8B5CF6]/15 blur-3xl opacity-70" />
-        <div className="absolute top-1/4 right-1/4 h-[320px] w-[400px] rounded-full bg-[#8B5CF6]/10 blur-3xl" />
+      {/* Hero Ambient Focal Glow */}
+      <div className="pointer-events-none absolute inset-0 -z-10 flex items-center justify-center overflow-hidden">
+        <div className="h-[520px] w-[760px] rounded-full bg-gradient-to-tr from-[#2563EB]/15 via-[#8B5CF6]/12 to-transparent blur-3xl opacity-80 animate-pulse-subtle" />
       </div>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
