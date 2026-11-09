@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AuthProvider } from "@/lib/auth-context";
 
 export const metadata: Metadata = {
   title: "ResolveAI — AI Customer Support Agent with Smart Human Handoff",
@@ -22,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased scroll-smooth">
       <body className="min-h-full flex flex-col bg-[#F8FAFC] text-[#0F172A] font-sans">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

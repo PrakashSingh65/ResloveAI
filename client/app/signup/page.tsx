@@ -6,8 +6,6 @@ import {
   Bot,
   User,
   Mail,
-  Calendar,
-  Globe,
   MapPin,
   Building,
   Phone,
@@ -22,12 +20,14 @@ import {
   Users,
   Check,
   ChevronDown,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { COUNTRIES, GENDER_OPTIONS } from "@/lib/location-data"
+import { authApi, getApiErrorMessage, UserProfile, GenderType, UserRegisterPayload } from "@/lib/api"
 
 export default function SignUpPage() {
   const [formData, setFormData] = React.useState({
@@ -47,10 +47,13 @@ export default function SignUpPage() {
   })
 
   const [errors, setErrors] = React.useState<Record<string, string>>({})
+  const [apiError, setApiError] = React.useState<string | null>(null)
   const [showPassword, setShowPassword] = React.useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = React.useState(false)
   const [isSubmitted, setIsSubmitted] = React.useState(false)
+  const [createdUser, setCreatedUser] = React.useState<UserProfile | null>(null)
 
   // Current states based on selected country
   const currentCountry = COUNTRIES.find((c) => c.name === formData.country)
@@ -79,20 +82,21 @@ export default function SignUpPage() {
       type === "checkbox" ? (e.target as HTMLInputElement).checked : value
 
     setFormData((prev) => ({ ...prev, [name]: val }))
+    if (apiError) setApiError(null)
 
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }))
     }
   }
 
-  // Password strength check
+  // Password strength check (aligned with backend Argon2 + complexity validator)
   const getPasswordStrength = (pass: string) => {
     let score = 0
     if (!pass) return { score: 0, label: "Empty", color: "bg-slate-200" }
     if (pass.length >= 8) score += 1
     if (/[A-Z]/.test(pass)) score += 1
+    if (/[a-z]/.test(pass)) score += 1
     if (/[0-9]/.test(pass)) score += 1
-    if (/[^A-Za-z0-9]/.test(pass)) score += 1
 
     switch (score) {
       case 1:
@@ -169,10 +173,17 @@ export default function SignUpPage() {
       newErrors.phone = "Enter a valid phone number (7-15 digits)"
     }
 
+    // Backend validation requires: min 8 chars, 1 uppercase, 1 lowercase, 1 digit
     if (!formData.password) {
       newErrors.password = "Password is required"
     } else if (formData.password.length < 8) {
       newErrors.password = "Password must be at least 8 characters long"
+    } else if (!/[A-Z]/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one uppercase letter"
+    } else if (!/[a-z]/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one lowercase letter"
+    } else if (!/\d/.test(formData.password)) {
+      newErrors.password = "Password must contain at least one digit"
     }
 
     if (!formData.confirmPassword) {
@@ -189,11 +200,20 @@ export default function SignUpPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const mapGender = (g: string): GenderType | undefined => {
+    const val = g.toLowerCase()
+    if (val === "male") return "male"
+    if (val === "female") return "female"
+    if (val === "prefer not to say" || val === "prefer_not_to_say") return "prefer_not_to_say"
+    if (val === "non-binary" || val === "other") return "other"
+    return "other"
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setApiError(null)
 
     if (!validateForm()) {
-      // Scroll to the first error
       const firstErrorField = document.querySelector("[aria-invalid='true']")
       if (firstErrorField) {
         firstErrorField.scrollIntoView({ behavior: "smooth", block: "center" })
@@ -203,24 +223,61 @@ export default function SignUpPage() {
 
     setIsSubmitting(true)
 
-    // Simulate API registration call
-    setTimeout(() => {
-      setIsSubmitting(false)
+    try {
+      const payload: UserRegisterPayload = {
+        first_name: formData.firstName.trim(),
+        last_name: formData.lastName.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        date_of_birth: formData.dateOfBirth || null,
+        country: formData.country || null,
+        city: formData.city?.trim() || null,
+        phone_no: formData.phone ? `${formData.phoneCountryCode} ${formData.phone.trim()}` : null,
+        gender: mapGender(formData.gender),
+      }
+
+      const response = await authApi.register(payload)
+      setCreatedUser(response.user)
       setIsSubmitted(true)
-    }, 1200)
+    } catch (err) {
+      const message = getApiErrorMessage(err)
+      setApiError(message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleGoogleSignUp = async () => {
+    setIsGoogleLoading(true)
+    setApiError(null)
+    try {
+      const url = await authApi.initiateGoogleOAuth()
+      if (url) {
+        window.location.href = url
+      }
+    } catch (err) {
+      setApiError(getApiErrorMessage(err))
+      setIsGoogleLoading(false)
+    }
   }
 
   // Max date for DOB (today)
   const maxDobDate = new Date().toISOString().split("T")[0]
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between selection:bg-[#8B5CF6]/20">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between selection:bg-[#2563EB]/15 relative overflow-x-hidden">
+      {/* Background Ambient Glow for modern AI SaaS feel */}
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(37,99,235,0.08),rgba(255,255,255,0))]"
+        aria-hidden="true"
+      />
+
       {/* Top Navigation Bar */}
-      <header className="w-full border-b border-[#E2E8F0] bg-white/90 backdrop-blur-md sticky top-0 z-40">
+      <header className="relative z-40 w-full border-b border-[#E2E8F0] bg-white/90 backdrop-blur-md sticky top-0">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link
             href="/"
-            className="flex items-center gap-3 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] rounded-lg p-1"
+            className="flex items-center gap-3 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] rounded-lg p-1 transition-transform"
           >
             <div className="relative flex size-10 items-center justify-center rounded-xl bg-gradient-to-tr from-[#2563EB] to-[#8B5CF6] text-white shadow-md shadow-[#2563EB]/25 transition-transform group-hover:scale-105">
               <Bot className="size-5.5 text-white" />
@@ -253,9 +310,9 @@ export default function SignUpPage() {
             </span>
             <Link href="/login">
               <Button
-                variant="outline"
+                variant="default"
                 size="sm"
-                className="font-semibold text-[#2563EB] hover:text-[#1D4ED8] hover:bg-blue-50 border-blue-200"
+                className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-semibold rounded-xl shadow-xs"
               >
                 Log In
               </Button>
@@ -265,7 +322,7 @@ export default function SignUpPage() {
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
+      <main className="relative z-10 flex-1 py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Left Hero / Brand Info Column (Visible on Desktop) */}
@@ -364,35 +421,37 @@ export default function SignUpPage() {
                     Account Created Successfully!
                   </h2>
                   <p className="text-sm text-slate-600 max-w-md mx-auto">
-                    Welcome to ResolveAI, <strong className="text-[#0F172A]">{formData.firstName} {formData.lastName}</strong>! We have sent a confirmation email to <span className="text-[#2563EB] font-medium">{formData.email}</span>.
+                    Welcome to ResolveAI, <strong className="text-[#0F172A]">{createdUser?.first_name || formData.firstName} {createdUser?.last_name || formData.lastName}</strong>! Your account has been registered with email <span className="text-[#2563EB] font-medium">{createdUser?.email || formData.email}</span>.
                   </p>
                 </div>
 
                 <div className="rounded-xl bg-slate-50 p-4 border border-slate-200 text-left text-xs text-slate-600 space-y-1.5 max-w-md mx-auto">
                   <div className="flex justify-between">
                     <span className="font-semibold text-slate-700">Name:</span>
-                    <span>{formData.firstName} {formData.lastName}</span>
+                    <span>{createdUser?.first_name || formData.firstName} {createdUser?.last_name || formData.lastName}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="font-semibold text-slate-700">Email:</span>
-                    <span>{formData.email}</span>
+                    <span>{createdUser?.email || formData.email}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="font-semibold text-slate-700">Phone:</span>
-                    <span>{formData.phoneCountryCode} {formData.phone}</span>
+                    <span>{createdUser?.phone_no || `${formData.phoneCountryCode} ${formData.phone}`}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="font-semibold text-slate-700">Location:</span>
-                    <span>{formData.city}, {formData.state}, {formData.country}</span>
+                    <span>{createdUser?.city || formData.city}, {createdUser?.country || formData.country}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="font-semibold text-slate-700">Gender:</span>
-                    <span>{formData.gender}</span>
+                    <span className="capitalize">{createdUser?.gender || formData.gender}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="font-semibold text-slate-700">Date of Birth:</span>
-                    <span>{formData.dateOfBirth}</span>
-                  </div>
+                  {formData.dateOfBirth && (
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-slate-700">Date of Birth:</span>
+                      <span>{createdUser?.date_of_birth || formData.dateOfBirth}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
@@ -410,6 +469,7 @@ export default function SignUpPage() {
                     size="lg"
                     onClick={() => {
                       setIsSubmitted(false)
+                      setCreatedUser(null)
                       setFormData((prev) => ({
                         ...prev,
                         password: "",
@@ -424,10 +484,10 @@ export default function SignUpPage() {
               </div>
             ) : (
               /* Registration Form Card */
-              <div className="rounded-2xl border border-[#E2E8F0] bg-white p-6 sm:p-8 md:p-10 shadow-sm">
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 md:p-10 shadow-sm shadow-slate-200/60">
                 
                 {/* Form Title */}
-                <div className="space-y-1.5 mb-8">
+                <div className="space-y-1.5 mb-6">
                   <div className="flex items-center justify-between">
                     <h2 className="text-2xl font-bold tracking-tight text-[#0F172A]">
                       Create your account
@@ -437,8 +497,64 @@ export default function SignUpPage() {
                     </Badge>
                   </div>
                   <p className="text-sm text-slate-500">
-                    Fill in your details below to set up your ResolveAI profile.
+                    Get started with ResolveAI in seconds.
                   </p>
+                </div>
+
+                {/* API Error Alert */}
+                {apiError && (
+                  <div
+                    role="alert"
+                    className="mb-5 p-3.5 rounded-xl bg-red-50/90 border border-red-200 text-xs text-red-700 flex items-start gap-2.5 animate-in fade-in duration-150"
+                  >
+                    <AlertCircle className="size-4 text-red-600 shrink-0 mt-0.5" />
+                    <div className="flex-1 font-medium leading-relaxed">{apiError}</div>
+                  </div>
+                )}
+
+                {/* Quick Google Sign-Up Action */}
+                <div className="space-y-4 mb-6">
+                  <button
+                    type="button"
+                    onClick={handleGoogleSignUp}
+                    disabled={isGoogleLoading || isSubmitting}
+                    className="w-full flex h-11 items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-xs sm:text-sm font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 active:scale-[0.99] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] focus-visible:border-transparent disabled:opacity-60"
+                  >
+                    {isGoogleLoading ? (
+                      <Loader2 className="size-4 animate-spin text-[#2563EB]" />
+                    ) : (
+                      <svg className="size-4.5" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          fill="#4285F4"
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                        />
+                      </svg>
+                    )}
+                    <span>Sign up with Google</span>
+                  </button>
+
+                  <div className="relative py-1">
+                    <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                      <div className="w-full border-t border-slate-200"></div>
+                    </div>
+                    <div className="relative flex justify-center text-xs">
+                      <span className="bg-white px-3 text-slate-400 font-medium tracking-wide uppercase">
+                        Or register with email
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6" noValidate>
@@ -455,7 +571,7 @@ export default function SignUpPage() {
                     {/* First Name & Last Name */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <Label htmlFor="firstName" required>
+                        <Label htmlFor="firstName" required className="text-xs font-semibold text-slate-700">
                           First Name
                         </Label>
                         <div className="relative">
@@ -463,24 +579,26 @@ export default function SignUpPage() {
                             id="firstName"
                             name="firstName"
                             type="text"
+                            autoComplete="given-name"
+                            spellCheck={false}
                             placeholder="John"
                             value={formData.firstName}
                             onChange={handleChange}
                             error={!!errors.firstName}
                             aria-invalid={!!errors.firstName}
-                            className="pl-3.5"
+                            className="pl-3.5 h-11 text-sm bg-slate-50/40 focus:bg-white"
                           />
                         </div>
                         {errors.firstName && (
-                          <p className="text-xs text-red-500 flex items-center gap-1 mt-1 font-medium">
-                            <AlertCircle className="size-3.5" />
-                            {errors.firstName}
+                          <p className="text-xs text-red-600 flex items-center gap-1.5 mt-1 font-medium">
+                            <AlertCircle className="size-3.5 shrink-0" />
+                            <span>{errors.firstName}</span>
                           </p>
                         )}
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label htmlFor="lastName" required>
+                        <Label htmlFor="lastName" required className="text-xs font-semibold text-slate-700">
                           Last Name
                         </Label>
                         <div className="relative">
@@ -488,18 +606,20 @@ export default function SignUpPage() {
                             id="lastName"
                             name="lastName"
                             type="text"
+                            autoComplete="family-name"
+                            spellCheck={false}
                             placeholder="Doe"
                             value={formData.lastName}
                             onChange={handleChange}
                             error={!!errors.lastName}
                             aria-invalid={!!errors.lastName}
-                            className="pl-3.5"
+                            className="pl-3.5 h-11 text-sm bg-slate-50/40 focus:bg-white"
                           />
                         </div>
                         {errors.lastName && (
-                          <p className="text-xs text-red-500 flex items-center gap-1 mt-1 font-medium">
-                            <AlertCircle className="size-3.5" />
-                            {errors.lastName}
+                          <p className="text-xs text-red-600 flex items-center gap-1.5 mt-1 font-medium">
+                            <AlertCircle className="size-3.5 shrink-0" />
+                            <span>{errors.lastName}</span>
                           </p>
                         )}
                       </div>
@@ -507,27 +627,29 @@ export default function SignUpPage() {
 
                     {/* Email Address */}
                     <div className="space-y-1.5">
-                      <Label htmlFor="email" required>
+                      <Label htmlFor="email" required className="text-xs font-semibold text-slate-700">
                         Email Address
                       </Label>
                       <div className="relative">
-                        <Mail className="size-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Mail className="size-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
                         <Input
                           id="email"
                           name="email"
                           type="email"
+                          autoComplete="email"
+                          spellCheck={false}
                           placeholder="john.doe@company.com"
                           value={formData.email}
                           onChange={handleChange}
                           error={!!errors.email}
                           aria-invalid={!!errors.email}
-                          className="pl-10"
+                          className="pl-10 h-11 text-sm bg-slate-50/40 focus:bg-white"
                         />
                       </div>
                       {errors.email && (
-                        <p className="text-xs text-red-500 flex items-center gap-1 mt-1 font-medium">
-                          <AlertCircle className="size-3.5" />
-                          {errors.email}
+                        <p className="text-xs text-red-600 flex items-center gap-1.5 mt-1 font-medium">
+                          <AlertCircle className="size-3.5 shrink-0" />
+                          <span>{errors.email}</span>
                         </p>
                       )}
                     </div>
@@ -536,7 +658,7 @@ export default function SignUpPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Date of Birth */}
                       <div className="space-y-1.5">
-                        <Label htmlFor="dateOfBirth" required>
+                        <Label htmlFor="dateOfBirth" required className="text-xs font-semibold text-slate-700">
                           Date of Birth
                         </Label>
                         <div className="relative">
@@ -549,20 +671,20 @@ export default function SignUpPage() {
                             onChange={handleChange}
                             error={!!errors.dateOfBirth}
                             aria-invalid={!!errors.dateOfBirth}
-                            className="pl-3.5"
+                            className="pl-3.5 h-11 text-sm bg-slate-50/40 focus:bg-white"
                           />
                         </div>
                         {errors.dateOfBirth && (
-                          <p className="text-xs text-red-500 flex items-center gap-1 mt-1 font-medium">
-                            <AlertCircle className="size-3.5" />
-                            {errors.dateOfBirth}
+                          <p className="text-xs text-red-600 flex items-center gap-1.5 mt-1 font-medium">
+                            <AlertCircle className="size-3.5 shrink-0" />
+                            <span>{errors.dateOfBirth}</span>
                           </p>
                         )}
                       </div>
 
                       {/* Gender */}
                       <div className="space-y-1.5">
-                        <Label htmlFor="gender" required>
+                        <Label htmlFor="gender" required className="text-xs font-semibold text-slate-700">
                           Gender
                         </Label>
                         <div className="relative">
@@ -572,7 +694,7 @@ export default function SignUpPage() {
                             value={formData.gender}
                             onChange={handleChange}
                             aria-invalid={!!errors.gender}
-                            className={`flex h-11 w-full rounded-xl border appearance-none bg-white px-3.5 py-2 text-sm text-[#0F172A] transition-all duration-150 outline-none focus-visible:border-[#2563EB] focus-visible:ring-2 focus-visible:ring-[#2563EB]/20 ${
+                            className={`flex h-11 w-full rounded-xl border appearance-none bg-slate-50/40 focus:bg-white px-3.5 py-2 text-sm text-[#0F172A] transition-all duration-150 outline-none focus-visible:border-[#2563EB] focus-visible:ring-2 focus-visible:ring-[#2563EB]/20 cursor-pointer ${
                               errors.gender
                                 ? "border-red-500"
                                 : "border-[#E2E8F0]"
@@ -587,12 +709,12 @@ export default function SignUpPage() {
                               </option>
                             ))}
                           </select>
-                          <ChevronDown className="size-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <ChevronDown className="size-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
                         </div>
                         {errors.gender && (
-                          <p className="text-xs text-red-500 flex items-center gap-1 mt-1 font-medium">
-                            <AlertCircle className="size-3.5" />
-                            {errors.gender}
+                          <p className="text-xs text-red-600 flex items-center gap-1.5 mt-1 font-medium">
+                            <AlertCircle className="size-3.5 shrink-0" />
+                            <span>{errors.gender}</span>
                           </p>
                         )}
                       </div>
@@ -610,7 +732,7 @@ export default function SignUpPage() {
 
                     {/* Phone Number */}
                     <div className="space-y-1.5">
-                      <Label htmlFor="phone" required>
+                      <Label htmlFor="phone" required className="text-xs font-semibold text-slate-700">
                         Phone Number
                       </Label>
                       <div className="flex gap-2">
@@ -633,29 +755,30 @@ export default function SignUpPage() {
                               </option>
                             ))}
                           </select>
-                          <ChevronDown className="size-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <ChevronDown className="size-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
                         </div>
 
                         {/* Phone Input */}
                         <div className="relative flex-1">
-                          <Phone className="size-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <Phone className="size-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
                           <Input
                             id="phone"
                             name="phone"
                             type="tel"
+                            autoComplete="tel-national"
                             placeholder="9876543210"
                             value={formData.phone}
                             onChange={handleChange}
                             error={!!errors.phone}
                             aria-invalid={!!errors.phone}
-                            className="pl-10"
+                            className="pl-10 h-11 text-sm bg-slate-50/40 focus:bg-white"
                           />
                         </div>
                       </div>
                       {errors.phone && (
-                        <p className="text-xs text-red-500 flex items-center gap-1 mt-1 font-medium">
-                          <AlertCircle className="size-3.5" />
-                          {errors.phone}
+                        <p className="text-xs text-red-600 flex items-center gap-1.5 mt-1 font-medium">
+                          <AlertCircle className="size-3.5 shrink-0" />
+                          <span>{errors.phone}</span>
                         </p>
                       )}
                     </div>
@@ -664,18 +787,17 @@ export default function SignUpPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Country */}
                       <div className="space-y-1.5">
-                        <Label htmlFor="country" required>
+                        <Label htmlFor="country" required className="text-xs font-semibold text-slate-700">
                           Country
                         </Label>
                         <div className="relative">
-                          <Globe className="size-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                           <select
                             id="country"
                             name="country"
                             value={formData.country}
                             onChange={handleCountryChange}
                             aria-invalid={!!errors.country}
-                            className={`flex h-11 w-full rounded-xl border appearance-none bg-white pl-10 pr-9 py-2 text-sm text-[#0F172A] transition-all duration-150 outline-none focus-visible:border-[#2563EB] focus-visible:ring-2 focus-visible:ring-[#2563EB]/20 ${
+                            className={`flex h-11 w-full rounded-xl border appearance-none bg-slate-50/40 focus:bg-white px-3.5 py-2 text-sm text-[#0F172A] transition-all duration-150 outline-none focus-visible:border-[#2563EB] focus-visible:ring-2 focus-visible:ring-[#2563EB]/20 cursor-pointer ${
                               errors.country
                                 ? "border-red-500"
                                 : "border-[#E2E8F0]"
@@ -687,19 +809,19 @@ export default function SignUpPage() {
                               </option>
                             ))}
                           </select>
-                          <ChevronDown className="size-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <ChevronDown className="size-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
                         </div>
                         {errors.country && (
-                          <p className="text-xs text-red-500 flex items-center gap-1 mt-1 font-medium">
-                            <AlertCircle className="size-3.5" />
-                            {errors.country}
+                          <p className="text-xs text-red-600 flex items-center gap-1.5 mt-1 font-medium">
+                            <AlertCircle className="size-3.5 shrink-0" />
+                            <span>{errors.country}</span>
                           </p>
                         )}
                       </div>
 
                       {/* State */}
                       <div className="space-y-1.5">
-                        <Label htmlFor="state" required>
+                        <Label htmlFor="state" required className="text-xs font-semibold text-slate-700">
                           State / Province
                         </Label>
                         <div className="relative">
@@ -711,7 +833,7 @@ export default function SignUpPage() {
                                 value={formData.state}
                                 onChange={handleChange}
                                 aria-invalid={!!errors.state}
-                                className={`flex h-11 w-full rounded-xl border appearance-none bg-white px-3.5 py-2 text-sm text-[#0F172A] transition-all duration-150 outline-none focus-visible:border-[#2563EB] focus-visible:ring-2 focus-visible:ring-[#2563EB]/20 ${
+                                className={`flex h-11 w-full rounded-xl border appearance-none bg-slate-50/40 focus:bg-white px-3.5 py-2 text-sm text-[#0F172A] transition-all duration-150 outline-none focus-visible:border-[#2563EB] focus-visible:ring-2 focus-visible:ring-[#2563EB]/20 cursor-pointer ${
                                   errors.state
                                     ? "border-red-500"
                                     : "border-[#E2E8F0]"
@@ -723,7 +845,7 @@ export default function SignUpPage() {
                                   </option>
                                 ))}
                               </select>
-                              <ChevronDown className="size-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                              <ChevronDown className="size-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
                             </>
                           ) : (
                             <Input
@@ -735,14 +857,14 @@ export default function SignUpPage() {
                               onChange={handleChange}
                               error={!!errors.state}
                               aria-invalid={!!errors.state}
-                              className="pl-3.5"
+                              className="pl-3.5 h-11 text-sm bg-slate-50/40 focus:bg-white"
                             />
                           )}
                         </div>
                         {errors.state && (
-                          <p className="text-xs text-red-500 flex items-center gap-1 mt-1 font-medium">
-                            <AlertCircle className="size-3.5" />
-                            {errors.state}
+                          <p className="text-xs text-red-600 flex items-center gap-1.5 mt-1 font-medium">
+                            <AlertCircle className="size-3.5 shrink-0" />
+                            <span>{errors.state}</span>
                           </p>
                         )}
                       </div>
@@ -750,27 +872,28 @@ export default function SignUpPage() {
 
                     {/* City */}
                     <div className="space-y-1.5">
-                      <Label htmlFor="city" required>
+                      <Label htmlFor="city" required className="text-xs font-semibold text-slate-700">
                         City
                       </Label>
                       <div className="relative">
-                        <Building className="size-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Building className="size-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
                         <Input
                           id="city"
                           name="city"
                           type="text"
+                          autoComplete="address-level2"
                           placeholder="Mumbai, New York, London..."
                           value={formData.city}
                           onChange={handleChange}
                           error={!!errors.city}
                           aria-invalid={!!errors.city}
-                          className="pl-10"
+                          className="pl-10 h-11 text-sm bg-slate-50/40 focus:bg-white"
                         />
                       </div>
                       {errors.city && (
-                        <p className="text-xs text-red-500 flex items-center gap-1 mt-1 font-medium">
-                          <AlertCircle className="size-3.5" />
-                          {errors.city}
+                        <p className="text-xs text-red-600 flex items-center gap-1.5 mt-1 font-medium">
+                          <AlertCircle className="size-3.5 shrink-0" />
+                          <span>{errors.city}</span>
                         </p>
                       )}
                     </div>
@@ -788,67 +911,69 @@ export default function SignUpPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Password */}
                       <div className="space-y-1.5">
-                        <Label htmlFor="password" required>
+                        <Label htmlFor="password" required className="text-xs font-semibold text-slate-700">
                           Password
                         </Label>
                         <div className="relative">
-                          <Lock className="size-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <Lock className="size-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
                           <Input
                             id="password"
                             name="password"
                             type={showPassword ? "text" : "password"}
+                            autoComplete="new-password"
                             placeholder="At least 8 characters"
                             value={formData.password}
                             onChange={handleChange}
                             error={!!errors.password}
                             aria-invalid={!!errors.password}
-                            className="pl-10 pr-10"
+                            className="pl-10 pr-10 h-11 text-sm bg-slate-50/40 focus:bg-white"
                           />
                           <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] rounded p-0.5 transition-colors cursor-pointer"
                             aria-label={showPassword ? "Hide password" : "Show password"}
                           >
                             {showPassword ? (
-                              <EyeOff className="size-4" />
+                              <EyeOff className="size-4" aria-hidden="true" />
                             ) : (
-                              <Eye className="size-4" />
+                              <Eye className="size-4" aria-hidden="true" />
                             )}
                           </button>
                         </div>
                         {errors.password && (
-                          <p className="text-xs text-red-500 flex items-center gap-1 mt-1 font-medium">
-                            <AlertCircle className="size-3.5" />
-                            {errors.password}
+                          <p className="text-xs text-red-600 flex items-center gap-1.5 mt-1 font-medium">
+                            <AlertCircle className="size-3.5 shrink-0" />
+                            <span>{errors.password}</span>
                           </p>
                         )}
                       </div>
 
                       {/* Confirm Password */}
                       <div className="space-y-1.5">
-                        <Label htmlFor="confirmPassword" required>
+                        <Label htmlFor="confirmPassword" required className="text-xs font-semibold text-slate-700">
                           Confirm Password
                         </Label>
                         <div className="relative">
-                          <Lock className="size-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <Lock className="size-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
                           <Input
                             id="confirmPassword"
                             name="confirmPassword"
                             type={showConfirmPassword ? "text" : "password"}
+                            autoComplete="new-password"
                             placeholder="Re-enter your password"
                             value={formData.confirmPassword}
                             onChange={handleChange}
                             error={!!errors.confirmPassword}
                             aria-invalid={!!errors.confirmPassword}
-                            className="pl-10 pr-10"
+                            className="pl-10 pr-10 h-11 text-sm bg-slate-50/40 focus:bg-white"
                           />
                           <button
                             type="button"
                             onClick={() =>
                               setShowConfirmPassword(!showConfirmPassword)
                             }
-                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] rounded p-0.5 transition-colors cursor-pointer"
                             aria-label={
                               showConfirmPassword
                                 ? "Hide confirm password"
@@ -856,16 +981,16 @@ export default function SignUpPage() {
                             }
                           >
                             {showConfirmPassword ? (
-                              <EyeOff className="size-4" />
+                              <EyeOff className="size-4" aria-hidden="true" />
                             ) : (
-                              <Eye className="size-4" />
+                              <Eye className="size-4" aria-hidden="true" />
                             )}
                           </button>
                         </div>
                         {errors.confirmPassword && (
-                          <p className="text-xs text-red-500 flex items-center gap-1 mt-1 font-medium">
-                            <AlertCircle className="size-3.5" />
-                            {errors.confirmPassword}
+                          <p className="text-xs text-red-600 flex items-center gap-1.5 mt-1 font-medium">
+                            <AlertCircle className="size-3.5 shrink-0" />
+                            <span>{errors.confirmPassword}</span>
                           </p>
                         )}
                       </div>
@@ -910,20 +1035,20 @@ export default function SignUpPage() {
                             Uppercase letter
                           </span>
                           <span className="flex items-center gap-1">
+                            {/[a-z]/.test(formData.password) ? (
+                              <Check className="size-3 text-emerald-600 font-bold" />
+                            ) : (
+                              <span className="size-1.5 rounded-full bg-slate-400 inline-block mr-1"></span>
+                            )}
+                            Lowercase letter
+                          </span>
+                          <span className="flex items-center gap-1">
                             {/[0-9]/.test(formData.password) ? (
                               <Check className="size-3 text-emerald-600 font-bold" />
                             ) : (
                               <span className="size-1.5 rounded-full bg-slate-400 inline-block mr-1"></span>
                             )}
                             At least 1 number
-                          </span>
-                          <span className="flex items-center gap-1">
-                            {/[^A-Za-z0-9]/.test(formData.password) ? (
-                              <Check className="size-3 text-emerald-600 font-bold" />
-                            ) : (
-                              <span className="size-1.5 rounded-full bg-slate-400 inline-block mr-1"></span>
-                            )}
-                            Special character
                           </span>
                         </div>
                       </div>
@@ -944,14 +1069,14 @@ export default function SignUpPage() {
                         I agree to ResolveAI&apos;s{" "}
                         <a
                           href="#"
-                          className="text-[#2563EB] hover:underline font-semibold"
+                          className="text-[#2563EB] hover:underline font-semibold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#2563EB] rounded"
                         >
                           Terms of Service
                         </a>{" "}
                         and acknowledge the{" "}
                         <a
                           href="#"
-                          className="text-[#2563EB] hover:underline font-semibold"
+                          className="text-[#2563EB] hover:underline font-semibold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#2563EB] rounded"
                         >
                           Privacy Policy
                         </a>
@@ -959,9 +1084,9 @@ export default function SignUpPage() {
                       </span>
                     </label>
                     {errors.agreeToTerms && (
-                      <p className="text-xs text-red-500 flex items-center gap-1 mt-1 font-medium">
-                        <AlertCircle className="size-3.5" />
-                        {errors.agreeToTerms}
+                      <p className="text-xs text-red-600 flex items-center gap-1.5 mt-1 font-medium">
+                        <AlertCircle className="size-3.5 shrink-0" />
+                        <span>{errors.agreeToTerms}</span>
                       </p>
                     )}
                   </div>
@@ -970,18 +1095,18 @@ export default function SignUpPage() {
                   <Button
                     type="submit"
                     size="lg"
-                    disabled={isSubmitting}
-                    className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold h-12 rounded-xl shadow-md shadow-[#2563EB]/25 text-sm transition-all"
+                    disabled={isSubmitting || isGoogleLoading}
+                    className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] active:scale-[0.99] text-white font-bold h-12 rounded-xl shadow-md shadow-[#2563EB]/25 text-sm transition-all cursor-pointer disabled:opacity-60"
                   >
                     {isSubmitting ? (
-                      <span className="flex items-center gap-2">
-                        <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                        Creating Account...
+                      <span className="flex items-center gap-2" role="status">
+                        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                        <span>Creating Account...</span>
                       </span>
                     ) : (
-                      <span className="flex items-center gap-2">
+                      <span className="flex items-center justify-center gap-2">
                         <span>Complete Sign Up</span>
-                        <ArrowRight className="size-4" />
+                        <ArrowRight className="size-4" aria-hidden="true" />
                       </span>
                     )}
                   </Button>
@@ -992,7 +1117,7 @@ export default function SignUpPage() {
                       Already registered?{" "}
                       <Link
                         href="/login"
-                        className="text-[#2563EB] hover:text-[#1D4ED8] font-bold hover:underline"
+                        className="text-[#2563EB] hover:text-[#1D4ED8] font-bold hover:underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] rounded"
                       >
                         Sign in to your account
                       </Link>
@@ -1006,13 +1131,13 @@ export default function SignUpPage() {
       </main>
 
       {/* Footer minimal */}
-      <footer className="border-t border-[#E2E8F0] bg-white py-6">
+      <footer className="relative z-10 border-t border-[#E2E8F0] bg-white py-6">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <div className="flex items-center gap-2">
             <span className="font-bold text-[#0F172A]">ResolveAI Inc.</span>
             <span>&copy; {new Date().getFullYear()} All rights reserved.</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-5">
             <a href="#" className="hover:text-slate-800 transition-colors">
               Privacy
             </a>

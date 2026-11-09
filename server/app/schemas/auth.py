@@ -139,6 +139,14 @@ class GoogleSyncRequest(BaseModel):
         default=None,
         description="Better Auth session token from Neon (if not passed in cookie)",
     )
+    email: Optional[EmailStr] = Field(
+        default=None,
+        description="User email address from verified Google session",
+    )
+    name: Optional[str] = Field(
+        default=None,
+        description="User full name from verified Google session",
+    )
 
 
 class MessageResponse(BaseModel):

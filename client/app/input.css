@@ -55,3 +55,73 @@
 .electric-glow {
   box-shadow: 0 0 35px -8px rgba(37, 99, 235, 0.25);
 }
+
+/* Ambient Modern Background Animations (UI/UX Pro Max) */
+@keyframes float-slow {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  50% {
+    transform: translate(32px, -24px) scale(1.08);
+  }
+}
+
+@keyframes float-reverse {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  50% {
+    transform: translate(-36px, 20px) scale(0.95);
+  }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes ray-glow {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(1) translateY(0);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(1.04) translateY(-8px);
+  }
+}
+
+.animate-float-slow {
+  animation: float-slow 16s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-float-reverse {
+  animation: float-reverse 20s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 11s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+.animate-ray-glow {
+  animation: ray-glow 14s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-slow,
+  .animate-float-reverse,
+  .animate-pulse-subtle,
+  .animate-ray-glow {
+    animation: none !important;
+  }
+}

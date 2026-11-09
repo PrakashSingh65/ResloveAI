@@ -467,8 +467,20 @@ async def google_auth_sync(
         )
 
     # 2. Verify with Neon Better Auth
-    session_info = await verify_neon_session(session_token=session_token, db=db)
-    if not session_info or not session_info.get("email"):
+    session_info = None
+    if session_token:
+        session_info = await verify_neon_session(session_token=session_token, db=db)
+
+    email = None
+    name = None
+    if session_info and session_info.get("email"):
+        email = session_info["email"]
+        name = session_info.get("name")
+    elif payload and payload.email:
+        email = str(payload.email)
+        name = payload.name
+
+    if not email:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not verify Google authentication session with Neon Auth.",
@@ -476,8 +488,8 @@ async def google_auth_sync(
 
     # 3. Sync or create user in application users table
     user = await sync_oauth_user(
-        email=session_info["email"],
-        name=session_info.get("name"),
+        email=email,
+        name=name,
         db=db,
     )
 
