@@ -7,4 +7,19 @@ authors = [
     { name = "Sandeep-singh-99", email = "sandeep.necoder@gmail.com" }
 ]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "alembic>=1.20.1",
+    "asyncpg>=0.32.0",
+    "fastapi>=0.162.2",
+    "google-genai>=3.0.0",
+    "httpx>=0.28.1",
+    "langgraph>=1.2.20",
+    "pgvector>=0.5.1",
+    "pwdlib[argon2]>=0.3.1",
+    "pydantic-settings>=2.16.2",
+    "pyjwt>=2.15.1",
+    "python-dotenv>=1.2.4",
+    "sqlmodel>=0.0.48",
+    "uvicorn[standard]>=0.54.0",
+    "websockets>=17.4",
+]
