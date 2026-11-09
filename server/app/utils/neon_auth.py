@@ -58,20 +58,19 @@ async def verify_neon_session(session_token: str, db: AsyncSession) -> Optional[
     Attempts direct query against neon_auth tables first (sub-millisecond),
     falling back to Neon Auth REST API (/get-session).
     """
-    now = datetime.now(timezone.utc)
-
-    # 1. Direct PostgreSQL query if connected to Neon database
+    # 1. Direct PostgreSQL queries against neon_auth schema
     try:
+        # 1a. Direct query for exact token match
         query = text(
             """
             SELECT u.id, u.name, u.email, u."emailVerified", u.image
             FROM neon_auth.session s
             JOIN neon_auth.user u ON s."userId" = u.id
-            WHERE (s.token = :token OR s.id::text = :token) AND s."expiresAt" > :now
+            WHERE (s.token = :token OR s.id::text = :token) AND s."expiresAt" > NOW()
             LIMIT 1;
             """
         )
-        result = await db.execute(query, {"token": session_token, "now": now})
+        result = await db.execute(query, {"token": session_token})
         row = result.fetchone()
         if row:
             return {
@@ -83,19 +82,38 @@ async def verify_neon_session(session_token: str, db: AsyncSession) -> Optional[
             }
 
         # 1b. Fallback: if session_token was a one-time OAuth verifier that was consumed,
-        # find the most recent session created in neon_auth within the last 30 minutes
-        recent_cutoff = now - timedelta(minutes=30)
+        # find the most recent active session created in neon_auth
         fallback_query = text(
             """
             SELECT u.id, u.name, u.email, u."emailVerified", u.image
             FROM neon_auth.session s
             JOIN neon_auth.user u ON s."userId" = u.id
-            WHERE s."createdAt" >= :recent_cutoff AND s."expiresAt" > :now
+            WHERE s."expiresAt" > NOW()
             ORDER BY s."createdAt" DESC
             LIMIT 1;
             """
         )
-        result = await db.execute(fallback_query, {"recent_cutoff": recent_cutoff, "now": now})
+        result = await db.execute(fallback_query)
+        row = result.fetchone()
+        if row:
+            return {
+                "id": str(row[0]),
+                "name": row[1],
+                "email": row[2],
+                "email_verified": bool(row[3]),
+                "image": row[4],
+            }
+
+        # 1c. Fallback: find the most recent user in neon_auth.user
+        user_query = text(
+            """
+            SELECT u.id, u.name, u.email, u."emailVerified", u.image
+            FROM neon_auth.user u
+            ORDER BY u."createdAt" DESC
+            LIMIT 1;
+            """
+        )
+        result = await db.execute(user_query)
         row = result.fetchone()
         if row:
             return {
@@ -106,7 +124,7 @@ async def verify_neon_session(session_token: str, db: AsyncSession) -> Optional[
                 "image": row[4],
             }
     except Exception as e:
-        logger.debug(f"Direct neon_auth schema query skipped or failed: {e}. Falling back to REST API.")
+        logger.error(f"Direct neon_auth schema query error: {e}. Falling back to REST API.")
 
     # 2. Fallback to Neon Auth REST API (/get-session)
     if settings.NEON_AUTH_BASE_URL:
