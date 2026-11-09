@@ -1,0 +1,28 @@
+# Host Virtual Environments
+.venv/
+venv/
+env/
+
+# Bytecode & Caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Git & OS artifacts
+.git
+.gitignore
+.DS_Store
+Thumbs.db
+
+# Secrets & local logs
+.env
+.env.*
+*.log
+logs/
+
+# Test reports
+htmlcov/
+.coverage
