@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
-    "build": "next build --webpack",
+    "dev": "node build-css.js && next dev",
+    "build": "node build-css.js && next build",
+    "build:css": "node build-css.js",
     "start": "next start",
     "lint": "eslint"
   },
