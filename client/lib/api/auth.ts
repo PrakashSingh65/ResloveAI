@@ -58,8 +58,7 @@ export interface GoogleSyncPayload {
 }
 
 export const NEON_AUTH_URL = (
-  process.env.NEXT_PUBLIC_NEON_AUTH_URL ||
-  "https://ep-misty-cloud-beb057o4.neonauth.c-9.us-east-2.aws.neon.tech/neondb/auth"
+  process.env.NEXT_PUBLIC_NEON_AUTH_URL || "https://auth.neon.tech"
 ).replace(/\/$/, "")
 
 function notifyAuthChange() {
