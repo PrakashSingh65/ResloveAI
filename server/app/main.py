@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
@@ -16,11 +17,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger("resolveai")
 
+# Silence noisy third-party SQL query logs unless DEBUG is explicitly enabled
+if not settings.DEBUG:
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Initialize database tables if not in test mode
-    if settings.ENVIRONMENT != "testing" and settings.DATABASE_URL:
+    is_test = os.getenv("ENVIRONMENT") == "testing" or settings.ENVIRONMENT == "testing"
+    if not is_test and settings.DATABASE_URL:
         logger.info("Starting up ResolveAI API...")
         try:
             await init_db()

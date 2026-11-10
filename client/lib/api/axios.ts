@@ -25,6 +25,21 @@ export const API_ROUTES = {
     GOOGLE_CALLBACK: `${API_BASE_URL}/auth/google/callback`,
     GOOGLE_SYNC: `${API_BASE_URL}/auth/google/sync`,
   },
+  TICKETS: {
+    LIST: `${API_BASE_URL}/tickets`,
+    METRICS: `${API_BASE_URL}/tickets/metrics`,
+    DETAIL: (id: string) => `${API_BASE_URL}/tickets/${id}`,
+    MESSAGES: (id: string) => `${API_BASE_URL}/tickets/${id}/messages`,
+    RESOLVE: (id: string) => `${API_BASE_URL}/tickets/${id}/resolve`,
+    FEEDBACK: (id: string) => `${API_BASE_URL}/tickets/${id}/feedback`,
+    SEED: `${API_BASE_URL}/tickets/seed-sample`,
+  },
+  KNOWLEDGE: {
+    DOCUMENTS: `${API_BASE_URL}/knowledge/documents`,
+    DETAIL: (id: string) => `${API_BASE_URL}/knowledge/documents/${id}`,
+    QUERY: `${API_BASE_URL}/knowledge/query`,
+    SEED: `${API_BASE_URL}/knowledge/seed`,
+  },
 } as const
 
 // Create standard Axios instance configured for FastAPI backend

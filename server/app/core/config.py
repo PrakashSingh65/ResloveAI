@@ -4,9 +4,9 @@ from functools import lru_cache
 from typing import List, Optional
 from dotenv import load_dotenv
 
-# Load environment variables from .env file into the system environment
-load_dotenv()
-load_dotenv("server/.env")
+# Load environment variables from .env file into the system environment (do not override explicit env vars)
+load_dotenv(override=False)
+load_dotenv("server/.env", override=False)
 
 
 def _get_bool(key: str, default: bool = False) -> bool:
@@ -93,10 +93,14 @@ class Settings:
         # 6. Neon Managed Better Auth (OAuth / Social Login)
         self.NEON_AUTH_BASE_URL: str = os.getenv("NEON_AUTH_BASE_URL", "")
 
-        # 7. AI & LLM (Optional / Gemini)
-        self.GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY", None)
+        # 7. AI & LLM (Groq & Google Gemini)
+        self.GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
         self.EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-004")
         self.VECTOR_DIMENSION: int = _get_int("VECTOR_DIMENSION", 768)
+
+        self.GROQ_API_KEY: Optional[str] = os.getenv("GROQ_API_KEY", None)
+        self.GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+        self.GROQ_FAST_MODEL: str = os.getenv("GROQ_FAST_MODEL", "llama-3.1-8b-instant")
 
         # =====================================================================
         # Runtime Validation (Fails fast if critical variables are missing)

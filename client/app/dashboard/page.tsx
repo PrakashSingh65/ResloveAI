@@ -32,6 +32,7 @@ import { FeedbackCSATView } from "@/components/dashboard/FeedbackCSATView"
 import { SimulatorTab } from "@/components/dashboard/SimulatorTab"
 import { INITIAL_TICKETS, SIMULATION_TEMPLATES } from "@/components/dashboard/dashboard-data"
 import { Ticket, Message } from "@/components/dashboard/types"
+import { ticketsApi } from "@/lib/api/tickets"
 
 export default function DashboardPage() {
   const { user, isAuthenticated, isLoading, logout } = useAuth()
@@ -45,6 +46,26 @@ export default function DashboardPage() {
   >("desk")
   const [simulationIndex, setSimulationIndex] = React.useState(0)
   const [notificationMessage, setNotificationMessage] = React.useState<string | null>(null)
+
+  // Load live tickets from FastAPI backend on mount
+  React.useEffect(() => {
+    let isMounted = true
+    async function fetchLiveTickets() {
+      try {
+        const live = await ticketsApi.listTickets()
+        if (isMounted && live && live.length > 0) {
+          setTickets(live)
+          setSelectedTicket(live[0])
+        }
+      } catch (err) {
+        // Fallback to initial local tickets smoothly
+      }
+    }
+    fetchLiveTickets()
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const handleLogout = async () => {
     try {
@@ -79,6 +100,13 @@ export default function DashboardPage() {
         return t
       })
     )
+
+    // Sync to backend asynchronously
+    ticketsApi.sendMessage(ticketId, {
+      text: messageText,
+      sender: "agent",
+      sender_name: user?.first_name ? `${user.first_name} (You)` : "Sarah Miller (You)",
+    }).catch(() => {})
   }
 
   // Handle 1-click resolution on a ticket
@@ -115,6 +143,11 @@ export default function DashboardPage() {
         return t
       })
     )
+
+    // Sync resolution to backend asynchronously
+    ticketsApi.resolveTicket(ticketId, {
+      action_name: actionName,
+    }).catch(() => {})
   }
 
   // Inject a new simulated customer escalation into the live queue
