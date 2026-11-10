@@ -38,7 +38,7 @@ export default function DashboardPage() {
   const { user, isAuthenticated, isLoading, logout } = useAuth()
   const router = useRouter()
   const [tickets, setTickets] = React.useState<Ticket[]>(INITIAL_TICKETS)
-  const [selectedTicket, setSelectedTicket] = React.useState<Ticket>(INITIAL_TICKETS[0])
+  const [selectedTicket, setSelectedTicket] = React.useState<Ticket | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
   const [operatorStatus, setOperatorStatus] = React.useState<"available" | "busy" | "away">("available")
   const [activeTab, setActiveTab] = React.useState<
@@ -92,7 +92,7 @@ export default function DashboardPage() {
         if (t.id === ticketId) {
           const updatedConv = [...t.conversation, newMsg]
           const updatedTicket = { ...t, conversation: updatedConv, timeAgo: "Just now" }
-          if (selectedTicket.id === ticketId) {
+          if (selectedTicket && selectedTicket.id === ticketId) {
             setSelectedTicket(updatedTicket)
           }
           return updatedTicket
@@ -135,7 +135,7 @@ export default function DashboardPage() {
               csatComment: "Resolved immediately with zero repetition!",
             },
           }
-          if (selectedTicket.id === ticketId) {
+          if (selectedTicket && selectedTicket.id === ticketId) {
             setSelectedTicket(updatedTicket)
           }
           return updatedTicket

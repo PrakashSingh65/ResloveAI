@@ -22,9 +22,10 @@ export function FeedbackCSATView() {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [submissionSuccess, setSubmissionSuccess] = React.useState(false)
 
-  const averageRating = (
-    feedbackList.reduce((acc, curr) => acc + curr.rating, 0) / feedbackList.length
-  ).toFixed(2)
+  const averageRating =
+    feedbackList.length > 0
+      ? (feedbackList.reduce((acc, curr) => acc + curr.rating, 0) / feedbackList.length).toFixed(2)
+      : "5.00"
 
   const handleSubmitSurvey = (e: React.FormEvent) => {
     e.preventDefault()
@@ -187,7 +188,16 @@ export function FeedbackCSATView() {
           </div>
 
           <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
-            {feedbackList.map((item) => (
+            {feedbackList.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center bg-slate-50/50">
+                <Star className="size-8 text-amber-300 mx-auto mb-2" />
+                <p className="text-xs font-semibold text-slate-700">No CSAT reviews yet</p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Customer feedback ratings and comments will appear here automatically when tickets are resolved.
+                </p>
+              </div>
+            ) : (
+              feedbackList.map((item) => (
               <div
                 key={item.id}
                 className="p-4 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-2 text-xs"
@@ -234,7 +244,8 @@ export function FeedbackCSATView() {
                   </span>
                 </div>
               </div>
-            ))}
+            ))
+          )}
           </div>
         </div>
       </div>

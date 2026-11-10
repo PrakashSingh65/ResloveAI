@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge"
 
 interface LiveSupportDeskProps {
   tickets: Ticket[]
-  selectedTicket: Ticket
+  selectedTicket: Ticket | null
   onSelectTicket: (ticket: Ticket) => void
   onSendMessage: (ticketId: string, messageText: string) => void
   onResolveTicket: (ticketId: string, actionName: string) => void
@@ -48,7 +48,7 @@ export function LiveSupportDesk({
   // Auto-scroll to bottom of conversation when messages update
   React.useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [selectedTicket.conversation.length])
+  }, [selectedTicket?.conversation?.length])
 
   // Filtered tickets
   const filteredTickets = tickets.filter((t) => {
@@ -65,16 +65,18 @@ export function LiveSupportDesk({
   })
 
   const handleSend = () => {
-    if (!inputText.trim()) return
+    if (!inputText.trim() || !selectedTicket) return
     onSendMessage(selectedTicket.id, inputText.trim())
     setInputText("")
   }
 
   const handleQuickReply = (text: string) => {
+    if (!selectedTicket) return
     onSendMessage(selectedTicket.id, text)
   }
 
   const handleActionClick = (actionName: string) => {
+    if (!selectedTicket) return
     onResolveTicket(selectedTicket.id, actionName)
     setActionSuccess(`Action executed: "${actionName}". Ticket marked resolved & CSAT survey sent!`)
     setTimeout(() => {
@@ -184,7 +186,7 @@ export function LiveSupportDesk({
             </div>
           ) : (
             filteredTickets.map((ticket) => {
-              const isSelected = ticket.id === selectedTicket.id
+              const isSelected = selectedTicket?.id === ticket.id
               return (
                 <div
                   key={ticket.id}
@@ -250,9 +252,21 @@ export function LiveSupportDesk({
       {/* CENTER PANE: Live Conversation Stream (5 cols)             */}
       {/* ============================================================ */}
       <div className="lg:col-span-5 rounded-3xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs flex flex-col justify-between min-h-[720px]">
-        <div>
-          {/* Conversation Header */}
-          <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 gap-2">
+        {!selectedTicket ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-400">
+            <div className="size-16 rounded-2xl bg-blue-50 text-[#2563EB] flex items-center justify-center mb-4 border border-blue-100">
+              <Sparkles className="size-8" />
+            </div>
+            <h3 className="text-base font-bold text-slate-800">No Active Ticket Selected</h3>
+            <p className="text-xs text-slate-500 max-w-sm mt-1.5 leading-relaxed">
+              The support queue is clean. When a customer sends an inquiry via Web Chat, WhatsApp, Email, or Mobile App, the live conversation stream will appear here.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div>
+              {/* Conversation Header */}
+              <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 gap-2">
             <div className="flex items-center gap-3">
               <div className="size-10 rounded-xl bg-blue-50 text-[#2563EB] flex items-center justify-center font-bold text-sm border border-blue-100">
                 {selectedTicket.customerAvatar}
@@ -478,14 +492,28 @@ export function LiveSupportDesk({
             </Button>
           </div>
         </div>
-      </div>
+      </>
+    )}
+  </div>
 
       {/* ============================================================ */}
       {/* RIGHT PANE: AI Intelligence Briefing & Actions (4 cols)     */}
       {/* ============================================================ */}
       <div className="lg:col-span-4 space-y-4">
-        {/* Card 1: Executive AI Context Briefing */}
-        <div className="rounded-3xl border border-[#8B5CF6]/30 bg-white p-4 sm:p-5 shadow-xs space-y-3.5">
+        {!selectedTicket ? (
+          <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center min-h-[360px] flex flex-col items-center justify-center">
+            <div className="size-14 rounded-2xl bg-violet-50 text-[#8B5CF6] flex items-center justify-center mb-3 border border-violet-100">
+              <ShieldCheck className="size-7" />
+            </div>
+            <h4 className="text-sm font-bold text-slate-800">AI Copilot Standby</h4>
+            <p className="text-xs text-slate-500 max-w-xs mt-1 leading-relaxed">
+              Select an inquiry from the queue to view its automated root cause briefing and pre-authorized 1-click resolution action.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Card 1: Executive AI Context Briefing */}
+            <div className="rounded-3xl border border-[#8B5CF6]/30 bg-white p-4 sm:p-5 shadow-xs space-y-3.5">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <div className="flex items-center gap-2 font-extrabold text-xs text-[#0F172A]">
               <Sparkles className="size-4 text-[#8B5CF6]" />
@@ -640,10 +668,12 @@ export function LiveSupportDesk({
             </Button>
           </div>
         </div>
-      </div>
+      </>
+    )}
+  </div>
 
-      {/* RAG Inspection Modal */}
-      {showRAGModal && (
+  {/* RAG Inspection Modal */}
+  {showRAGModal && selectedTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-100">
           <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl space-y-4 border border-slate-200">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
