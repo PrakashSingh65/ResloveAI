@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import {
   LayoutDashboard,
   Sparkles,
@@ -64,9 +65,11 @@ export function HumanDashboardPreview() {
                 <Clock className="size-3.5 text-[#2563EB]" />
                 Avg Human Resolution: <strong className="text-slate-900">1m 15s</strong>
               </div>
-              <Button size="sm" className="bg-[#2563EB] text-white hover:bg-[#1D4ED8] rounded-xl text-xs font-semibold">
-                Available (Auto-Accept)
-              </Button>
+              <Link href="/dashboard">
+                <Button size="sm" className="bg-[#2563EB] text-white hover:bg-[#1D4ED8] rounded-xl text-xs font-semibold cursor-pointer">
+                  Launch Live Console
+                </Button>
+              </Link>
             </div>
           </div>
 
@@ -274,6 +277,27 @@ export function HumanDashboardPreview() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Full Console Navigation CTA */}
+        <div className="mt-8 p-6 rounded-3xl bg-gradient-to-r from-blue-50 via-indigo-50/50 to-violet-50 border border-blue-200/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="space-y-1 text-center sm:text-left">
+            <h3 className="font-extrabold text-base text-[#0F172A] flex items-center justify-center sm:justify-start gap-2">
+              <Sparkles className="size-4 text-[#8B5CF6]" />
+              <span>Explore the Live ResolveAI Operator Console</span>
+            </h3>
+            <p className="text-xs text-slate-600 max-w-xl">
+              Switch tickets, test RAG semantic search, explore diagnostic flowcharts, submit CSAT surveys, and trigger live customer escalations.
+            </p>
+          </div>
+
+          <Link href="/dashboard" className="shrink-0">
+            <Button className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold rounded-xl text-xs h-10 px-5 shadow-sm shadow-[#2563EB]/25 flex items-center gap-2 cursor-pointer">
+              <LayoutDashboard className="size-4" />
+              <span>Launch Live Support Dashboard</span>
+              <ArrowRight className="size-3.5" />
+            </Button>
+          </Link>
         </div>
       </div>
     </section>

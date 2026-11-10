@@ -70,7 +70,7 @@ export function Navbar() {
                 <Button
                   variant="default"
                   size="sm"
-                  className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-sm shadow-[#2563EB]/20 font-semibold h-9 px-3.5 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all"
+                  className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-sm shadow-[#2563EB]/20 font-semibold h-9 px-3.5 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all text-xs"
                 >
                   <LayoutDashboard className="size-3.5" />
                   <span>Dashboard</span>
@@ -83,7 +83,7 @@ export function Navbar() {
                 size="sm"
                 onClick={handleLogout}
                 disabled={isLoggingOut}
-                className="font-semibold text-slate-600 hover:text-red-600 hover:bg-red-50 h-9 px-3 rounded-xl cursor-pointer flex items-center gap-1.5 transition-colors"
+                className="font-semibold text-slate-600 hover:text-red-600 hover:bg-red-50 h-9 px-3 rounded-xl cursor-pointer flex items-center gap-1.5 transition-colors text-xs"
                 aria-label="Log out of account"
               >
                 {isLoggingOut ? (
@@ -95,16 +95,28 @@ export function Navbar() {
               </Button>
             </>
           ) : (
-            <Link href="/login">
-              <Button
-                variant="default"
-                size="sm"
-                className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-sm shadow-[#2563EB]/20 font-semibold h-9 px-4 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all"
-              >
-                <LogIn className="size-3.5 mr-1" />
-                <span>Login</span>
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/dashboard">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-slate-200 text-slate-700 hover:text-[#2563EB] hover:bg-blue-50/50 font-semibold h-9 px-3.5 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all text-xs"
+                >
+                  <LayoutDashboard className="size-3.5 text-[#2563EB]" />
+                  <span>Open Console</span>
+                </Button>
+              </Link>
+              <Link href="/login">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-sm shadow-[#2563EB]/20 font-semibold h-9 px-4 rounded-xl cursor-pointer flex items-center gap-1.5 transition-all text-xs"
+                >
+                  <LogIn className="size-3.5 mr-1" />
+                  <span>Login</span>
+                </Button>
+              </Link>
+            </div>
           )}
         </div>
       </div>
