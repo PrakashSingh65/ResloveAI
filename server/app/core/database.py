@@ -12,9 +12,15 @@ connect_args = {}
 if settings.is_ssl_required:
     connect_args["ssl"] = True
 
+# Silence noisy SQLAlchemy query logs unless SQL_ECHO is explicitly True
+if not settings.SQL_ECHO:
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.engine.Engine").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
+
 # Engine creation
 engine_kwargs = {
-    "echo": settings.DEBUG,
+    "echo": settings.SQL_ECHO,
     "future": True,
     "connect_args": connect_args,
 }

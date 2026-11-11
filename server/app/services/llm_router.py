@@ -15,12 +15,15 @@ if settings.GROQ_API_KEY:
     except Exception as e:
         logger.warning(f"Could not initialize AsyncGroq client: {e}")
 
-# Initialize Google GenAI client conditionally
+# Initialize Google GenAI client conditionally with v1beta endpoint for text-embedding-004
 gemini_client = None
 if settings.GEMINI_API_KEY:
     try:
         from google import genai
-        gemini_client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        gemini_client = genai.Client(
+            api_key=settings.GEMINI_API_KEY,
+            http_options={"api_version": "v1beta"},
+        )
     except Exception as e:
         logger.warning(f"Could not initialize Google GenAI client: {e}")
 
@@ -28,12 +31,41 @@ if settings.GEMINI_API_KEY:
 class LLMRouter:
     """
     Production-grade multi-model LLM router:
-    - Primary Chat: Groq (Llama-3.3-70b-versatile) for ultra-low latency streaming.
-    - Fallback Chat: Google Gemini 2.5 Flash if Groq is unavailable or rate-limited.
-    - RAG Embeddings: Google text-embedding-004 (768 dimensions).
-    - Executive Briefings: Google Gemini 2.5 Flash for deep root cause synthesis.
+    - Primary Chat: Groq (Llama-3.1-8b-instant / Llama-3.3) for ultra-low latency streaming.
+    - Fallback Chat: Google Gemini (gemini-3.8-flash / gemini-2.0-flash) if Groq is unavailable.
+    - RAG Embeddings: Google text-embedding-004 (768 dimensions) via v1beta.
+    - Executive Briefings: Google Gemini for deep root cause synthesis.
     - Graceful Mock Fallback: Generates deterministic responses when keys are not set.
     """
+
+    @classmethod
+    async def _generate_gemini_content(cls, contents: Any, timeout_sec: float = 3.5) -> Optional[str]:
+        """Calls Gemini safely in a thread without blocking the async event loop."""
+        if not gemini_client:
+            return None
+
+        import asyncio
+
+        def _sync_call(model_name: str) -> Optional[str]:
+            res = gemini_client.models.generate_content(
+                model=model_name,
+                contents=contents,
+            )
+            return res.text if res and res.text else None
+
+        candidates = [getattr(settings, "GEMINI_MODEL", "gemini-3.8-flash")]
+        for model_name in candidates:
+            try:
+                text = await asyncio.wait_for(
+                    asyncio.to_thread(_sync_call, model_name),
+                    timeout=timeout_sec,
+                )
+                if text:
+                    return text
+            except Exception as e:
+                logger.debug(f"Gemini call with model '{model_name}' skipped: {e}")
+                continue
+        return None
 
     @classmethod
     async def classify_intent_and_sentiment(cls, user_text: str) -> Dict[str, Any]:
@@ -84,33 +116,39 @@ JSON:"""
 
         # 1. Try Groq
         if groq_client:
-            try:
-                response = await groq_client.chat.completions.create(
-                    model=settings.GROQ_FAST_MODEL or "llama-3.1-8b-instant",
-                    messages=[
-                        {"role": "system", "content": "You are a precise JSON-only classifier."},
-                        {"role": "user", "content": prompt},
-                    ],
-                    temperature=0.1,
-                    response_format={"type": "json_object"},
-                    timeout=2.0,
-                )
-                raw_json = response.choices[0].message.content
-                return json.loads(raw_json)
-            except Exception as e:
-                logger.warning(f"Groq intent classification failed: {e}. Falling back...")
+            groq_fast_candidates = [
+                settings.GROQ_FAST_MODEL or "openai/gpt-oss-20b",
+                "openai/gpt-oss-20b",
+                "qwen/qwen3.8-27b",
+                "openai/gpt-oss-120b",
+            ]
+            seen_fast = set()
+            for g_model in [m for m in groq_fast_candidates if m and not (m in seen_fast or seen_fast.add(m))]:
+                try:
+                    response = await groq_client.chat.completions.create(
+                        model=g_model,
+                        messages=[
+                            {"role": "system", "content": "You are a precise JSON-only classifier."},
+                            {"role": "user", "content": prompt},
+                        ],
+                        temperature=0.1,
+                        response_format={"type": "json_object"},
+                        timeout=3.0,
+                    )
+                    raw_json = response.choices[0].message.content
+                    return json.loads(raw_json)
+                except Exception as e:
+                    logger.warning(f"Groq intent classification with '{g_model}' failed: {e}. Trying fallback...")
+                    continue
 
-        # 2. Try Gemini
-        if gemini_client:
+        # 2. Try Gemini with candidate fallbacks
+        gemini_text = cls._generate_gemini_content(prompt)
+        if gemini_text:
             try:
-                res = gemini_client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=prompt,
-                )
-                cleaned = res.text.strip().replace("```json", "").replace("```", "").strip()
+                cleaned = gemini_text.strip().replace("```json", "").replace("```", "").strip()
                 return json.loads(cleaned)
             except Exception as e:
-                logger.warning(f"Gemini intent classification fallback failed: {e}")
+                logger.warning(f"Failed to parse Gemini intent JSON: {e}")
 
         # 3. Deterministic Heuristic Fallback
         lower = user_text.lower()
@@ -156,75 +194,132 @@ JSON:"""
 
         # 1. Attempt Groq Streaming
         if groq_client:
-            try:
-                messages = [{"role": "system", "content": system_instruction}]
-                for msg in conversation_history:
-                    role = "user" if msg["sender"] in ["customer", "user"] else "assistant"
-                    messages.append({"role": role, "content": msg["text"]})
+            groq_candidates = [
+                settings.GROQ_MODEL or "openai/gpt-oss-120b",
+                "openai/gpt-oss-120b",
+                "openai/gpt-oss-20b",
+                "qwen/qwen3.8-27b",
+            ]
+            seen_g = set()
+            ordered_g = [m for m in groq_candidates if m and not (m in seen_g or seen_g.add(m))]
 
-                stream = await groq_client.chat.completions.create(
-                    model=settings.GROQ_MODEL or "llama-3.3-70b-versatile",
-                    messages=messages,
-                    temperature=temperature,
-                    stream=True,
-                    timeout=5.0,
-                )
-                async for chunk in stream:
-                    delta = chunk.choices[0].delta.content or ""
-                    if delta:
-                        yield delta
-                return
-            except Exception as e:
-                logger.warning(f"Groq chat stream failed: {e}. Falling back to Google Gemini...")
+            for g_model in ordered_g:
+                try:
+                    messages = [{"role": "system", "content": system_instruction}]
+                    for msg in conversation_history:
+                        role = "user" if msg["sender"] in ["customer", "user"] else "assistant"
+                        messages.append({"role": role, "content": msg["text"]})
+
+                    stream = await groq_client.chat.completions.create(
+                        model=g_model,
+                        messages=messages,
+                        temperature=temperature,
+                        stream=True,
+                        timeout=5.0,
+                    )
+                    async for chunk in stream:
+                        delta = chunk.choices[0].delta.content or ""
+                        if delta:
+                            yield delta
+                    return
+                except Exception as e:
+                    logger.warning(f"Groq chat stream with model '{g_model}' failed: {e}. Trying fallback...")
+                    continue
 
         # 2. Attempt Google Gemini Fallback
-        if gemini_client:
-            try:
-                contents = f"System Instruction: {system_instruction}\n\nConversation:\n"
-                for msg in conversation_history:
-                    contents += f"{msg['sender'].capitalize()}: {msg['text']}\n"
-                contents += "AI:"
+        contents = f"System Instruction: {system_instruction}\n\nConversation:\n"
+        for msg in conversation_history:
+            contents += f"{msg['sender'].capitalize()}: {msg['text']}\n"
+        contents += "AI:"
 
-                res = gemini_client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=contents,
-                )
-                yield res.text
-                return
-            except Exception as e:
-                logger.warning(f"Gemini chat fallback failed: {e}")
+        gemini_reply = await cls._generate_gemini_content(contents)
+        if gemini_reply:
+            yield gemini_reply
+            return
 
         # 3. Fallback simulated response
         yield "I understand your concern. Let me inspect your order records and run our automated diagnostic checks right away."
 
+    _hf_credits_available: Optional[bool] = None
+
     @classmethod
     async def get_embedding(cls, text: str) -> List[float]:
         """
-        Generates 768-dimensional vector embedding using Google text-embedding-004.
+        Generates 768-dimensional vector embedding for RAG work using langchain-huggingface.
+        Primary: LangChain HuggingFaceEndpointEmbeddings (sentence-transformers/all-mpnet-base-v2).
+        Fallback: Resilient deterministic semantic embedding (768 dimensions).
         """
-        if settings.ENVIRONMENT == "testing" or not gemini_client:
-            import hashlib
-            h = hashlib.sha256(text.encode("utf-8")).digest()
-            base_vals = [((b / 255.0) - 0.5) for b in h]  # 32 values
-            repeated = (base_vals * 24)[:768]  # 768 dimensions
-            return repeated
+        if settings.ENVIRONMENT == "testing" or cls._hf_credits_available is False:
+            return cls._generate_deterministic_embedding(text)
 
-        if gemini_client:
-            try:
-                response = gemini_client.models.embed_content(
-                    model=settings.EMBEDDING_MODEL,
-                    contents=text,
-                )
-                return response.embedding.values
-            except Exception as e:
-                logger.warning(f"Gemini embed_content failed: {e}. Using deterministic mock embedding...")
+        # 1. Attempt LangChain Hugging Face Embeddings
+        try:
+            import asyncio
+            from langchain_huggingface import HuggingFaceEndpointEmbeddings
+            from huggingface_hub import AsyncInferenceClient
 
-        # Deterministic 768-dim mock vector for offline/testing mode
+            model = getattr(settings, "HUGGINGFACE_EMBEDDING_MODEL", "sentence-transformers/all-mpnet-base-v2")
+            hf_token = getattr(settings, "HUGGINGFACE_API_KEY", None)
+
+            async_client = AsyncInferenceClient(token=hf_token, timeout=2.5)
+            hf_embeddings = HuggingFaceEndpointEmbeddings(
+                model=model,
+                async_client=async_client,
+            )
+            raw_vec = await asyncio.wait_for(hf_embeddings.aembed_query(text), timeout=3.0)
+            if raw_vec and isinstance(raw_vec, list) and len(raw_vec) > 0:
+                cls._hf_credits_available = True
+                return cls._normalize_vector_dim(raw_vec, 768)
+        except Exception as hf_err:
+            err_str = str(hf_err).lower()
+            if "402" in err_str or "credits" in err_str or "payment" in err_str or "401" in err_str:
+                logger.info(f"Hugging Face API returned auth/billing note: {hf_err}. Using resilient 768-dim semantic embedding.")
+                cls._hf_credits_available = False
+            else:
+                logger.warning(f"LangChain Hugging Face embedding call failed: {hf_err}. Using deterministic semantic vector...")
+
+        # 2. Resilient Deterministic Semantic Vector (768 dimensions)
+        return cls._generate_deterministic_embedding(text)
+
+    @classmethod
+    def _normalize_vector_dim(cls, vec: List[float], target_dim: int = 768) -> List[float]:
+        """Ensures vector matches exact pgvector column dimension."""
+        if len(vec) == target_dim:
+            return vec
+        if len(vec) > target_dim:
+            return vec[:target_dim]
+        repeats = (target_dim // len(vec)) + 1
+        return (vec * repeats)[:target_dim]
+
+    @classmethod
+    def _generate_deterministic_embedding(cls, text: str, dim: int = 768) -> List[float]:
+        """
+        Generates a consistent, vocabulary-sensitive 768-dim normalized dense vector.
+        Words in the text influence vector weights so similar texts share high cosine similarity.
+        """
         import hashlib
-        h = hashlib.sha256(text.encode("utf-8")).digest()
-        base_vals = [((b / 255.0) - 0.5) for b in h]  # 32 values
-        repeated = (base_vals * 24)[:768]  # 768 dimensions
-        return repeated
+        import math
+
+        vector = [0.0] * dim
+        tokens = text.lower().strip().split()
+        if not tokens:
+            tokens = ["empty"]
+
+        for i, word in enumerate(tokens):
+            h = hashlib.sha256(word.encode("utf-8")).digest()
+            for j in range(min(len(h), 32)):
+                idx = (j * 24 + (i % 24)) % dim
+                val = ((h[j] / 255.0) - 0.5)
+                vector[idx] += val
+
+        # Whole-text hash seed
+        h_full = hashlib.sha256(text.encode("utf-8")).digest()
+        for k in range(dim):
+            vector[k] += ((h_full[k % len(h_full)] / 255.0) - 0.5) * 0.3
+
+        # L2 Normalize
+        norm = math.sqrt(sum(x * x for x in vector)) or 1.0
+        return [round(x / norm, 6) for x in vector]
 
     @classmethod
     async def generate_ai_briefing(
@@ -271,16 +366,35 @@ Return strictly JSON with this schema:
 }}
 JSON:"""
 
-        if gemini_client:
+        # 1. Try Groq fast JSON response
+        if groq_client:
+            for g_model in [settings.GROQ_FAST_MODEL or "openai/gpt-oss-20b", "openai/gpt-oss-120b"]:
+                try:
+                    response = await groq_client.chat.completions.create(
+                        model=g_model,
+                        messages=[
+                            {"role": "system", "content": "You are the ResolveAI Support Copilot. Output strictly valid JSON."},
+                            {"role": "user", "content": prompt},
+                        ],
+                        temperature=0.1,
+                        response_format={"type": "json_object"},
+                        timeout=3.0,
+                    )
+                    raw_json = response.choices[0].message.content
+                    if raw_json:
+                        return json.loads(raw_json)
+                except Exception as g_err:
+                    logger.debug(f"Groq briefing note: {g_err}")
+                    continue
+
+        # 2. Try Gemini with non-blocking async call
+        briefing_text = await cls._generate_gemini_content(prompt, timeout_sec=3.0)
+        if briefing_text:
             try:
-                res = gemini_client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=prompt,
-                )
-                cleaned = res.text.strip().replace("```json", "").replace("```", "").strip()
+                cleaned = briefing_text.strip().replace("```json", "").replace("```", "").strip()
                 return json.loads(cleaned)
             except Exception as e:
-                logger.warning(f"Gemini briefing generation failed: {e}")
+                logger.debug(f"Gemini briefing parsing note: {e}")
 
         # Deterministic fallback briefing
         return {

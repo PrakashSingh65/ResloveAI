@@ -86,6 +86,23 @@ async def get_ticket_detail(
     return ticket
 
 
+@router.delete(
+    "/{ticket_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a support ticket",
+)
+async def delete_ticket(
+    ticket_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        parsed_uuid = uuid.UUID(ticket_id)
+        await TicketService.delete_ticket(db, parsed_uuid)
+    except (ValueError, TypeError):
+        pass
+    return None
+
+
 @router.post(
     "",
     response_model=TicketDetailResponse,

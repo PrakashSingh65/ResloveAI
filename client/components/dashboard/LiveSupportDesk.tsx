@@ -17,6 +17,7 @@ import {
   Star,
   Eye,
   Zap,
+  Trash2,
 } from "lucide-react"
 import { Ticket, TicketStatus } from "./types"
 import { Button } from "@/components/ui/button"
@@ -28,7 +29,58 @@ interface LiveSupportDeskProps {
   onSelectTicket: (ticket: Ticket) => void
   onSendMessage: (ticketId: string, messageText: string) => void
   onResolveTicket: (ticketId: string, actionName: string) => void
+  onDeleteTicket?: (ticketId: string) => void
   searchFilter: string
+}
+
+function renderCustomerAvatar(avatar?: string, name?: string, size = "size-7") {
+  const isUrl =
+    typeof avatar === "string" &&
+    (avatar.startsWith("http://") || avatar.startsWith("https://") || avatar.startsWith("/"))
+
+  const initials = name
+    ? name
+        .split(" ")
+        .filter(Boolean)
+        .map((p) => p[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : typeof avatar === "string" && avatar.length <= 3
+    ? avatar.toUpperCase()
+    : "CU"
+
+  if (isUrl) {
+    return (
+      <div
+        className={`${size} rounded-lg overflow-hidden shrink-0 bg-slate-100 border border-slate-200/80 flex items-center justify-center relative`}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={avatar}
+          alt={name || "Customer"}
+          className="size-full object-cover"
+          onError={(e) => {
+            const target = e.currentTarget
+            target.style.display = "none"
+            const parent = target.parentElement
+            if (parent) {
+              parent.innerText = initials
+              parent.className = `${size} rounded-lg bg-blue-50 text-[#2563EB] flex items-center justify-center font-bold text-xs shrink-0 border border-blue-200/60`
+            }
+          }}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className={`${size} rounded-lg bg-gradient-to-tr from-blue-50 to-indigo-50 text-[#2563EB] flex items-center justify-center font-bold text-xs shrink-0 border border-blue-200/60`}
+    >
+      {typeof avatar === "string" && avatar.length <= 3 ? avatar : initials}
+    </div>
+  )
 }
 
 export function LiveSupportDesk({
@@ -37,11 +89,13 @@ export function LiveSupportDesk({
   onSelectTicket,
   onSendMessage,
   onResolveTicket,
+  onDeleteTicket,
   searchFilter,
 }: LiveSupportDeskProps) {
   const [statusTab, setStatusTab] = React.useState<"all" | "escalated" | "ai_troubleshooting" | "resolved">("all")
   const [inputText, setInputText] = React.useState("")
   const [showRAGModal, setShowRAGModal] = React.useState(false)
+  const [ticketToDelete, setTicketToDelete] = React.useState<Ticket | null>(null)
   const [actionSuccess, setActionSuccess] = React.useState<string | null>(null)
   const chatBottomRef = React.useRef<HTMLDivElement>(null)
 
@@ -99,29 +153,29 @@ export function LiveSupportDesk({
     }
   }
 
-  const getStatusBadge = (status: TicketStatus) => {
+  const getStatusBadge = (status: TicketStatus, compact = false) => {
     switch (status) {
       case "escalated":
         return (
-          <Badge className="bg-red-500/10 text-red-600 border border-red-200 text-[10px] font-bold">
-            Escalated to Human
+          <Badge className="bg-red-500/10 text-red-600 border border-red-200 text-[10px] font-bold px-2 py-0.5 whitespace-nowrap">
+            {compact ? "Escalated" : "Escalated to Human"}
           </Badge>
         )
       case "ai_troubleshooting":
         return (
-          <Badge variant="ai" className="text-[10px] font-semibold">
-            AI Troubleshooting
+          <Badge variant="ai" className="text-[10px] font-semibold px-2 py-0.5 whitespace-nowrap">
+            {compact ? "AI Active" : "AI Troubleshooting"}
           </Badge>
         )
       case "pending_user":
         return (
-          <Badge variant="warning" className="text-[10px] font-semibold">
-            Awaiting Customer
+          <Badge variant="warning" className="text-[10px] font-semibold px-2 py-0.5 whitespace-nowrap">
+            {compact ? "Awaiting" : "Awaiting Customer"}
           </Badge>
         )
       case "resolved":
         return (
-          <Badge variant="success" className="text-[10px] font-semibold">
+          <Badge variant="success" className="text-[10px] font-semibold px-2 py-0.5 whitespace-nowrap">
             Resolved
           </Badge>
         )
@@ -191,30 +245,44 @@ export function LiveSupportDesk({
                 <div
                   key={ticket.id}
                   onClick={() => onSelectTicket(ticket)}
-                  className={`rounded-2xl p-3.5 transition-all cursor-pointer border text-left space-y-2 ${
+                  className={`rounded-2xl p-3.5 transition-all cursor-pointer border text-left space-y-2 overflow-hidden ${
                     isSelected
                       ? "border-[#2563EB] bg-white ring-2 ring-[#2563EB]/15 shadow-sm"
                       : "border-slate-200 bg-white/70 hover:bg-white hover:border-slate-300"
                   }`}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-1">
                     <span
-                      className={`text-xs font-extrabold font-mono ${
+                      className={`text-xs font-extrabold font-mono truncate ${
                         isSelected ? "text-[#2563EB]" : "text-slate-700"
                       }`}
                     >
                       {ticket.ticketNumber}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-medium">
-                      {ticket.timeAgo}
-                    </span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        {ticket.timeAgo}
+                      </span>
+                      {onDeleteTicket && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setTicketToDelete(ticket)
+                          }}
+                          className="size-5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition cursor-pointer"
+                          title="Delete ticket"
+                          aria-label="Delete ticket"
+                        >
+                          <Trash2 className="size-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Customer Info & Avatar */}
-                  <div className="flex items-center gap-2.5">
-                    <div className="size-7 rounded-lg bg-gradient-to-tr from-slate-200 to-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs shrink-0 border border-slate-200/80">
-                      {ticket.customerAvatar}
-                    </div>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {renderCustomerAvatar(ticket.customerAvatar, ticket.customerName, "size-8")}
                     <div className="min-w-0 flex-1">
                       <div className="text-xs font-bold text-[#0F172A] truncate">
                         {ticket.customerName}
@@ -226,20 +294,22 @@ export function LiveSupportDesk({
                   </div>
 
                   {/* Intent & Problem Snippet */}
-                  <div className="text-xs text-slate-700 font-medium line-clamp-1">
+                  <div className="text-xs text-slate-700 font-medium truncate">
                     {ticket.intent}
                   </div>
 
                   {/* Sentiment & Status Pill */}
-                  <div className="flex items-center justify-between pt-1 gap-1 flex-wrap">
+                  <div className="flex items-center justify-between pt-1 gap-1.5 min-w-0">
                     <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${getSentimentColor(
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border truncate shrink-0 max-w-[125px] ${getSentimentColor(
                         ticket.sentiment
                       )}`}
                     >
                       {ticket.sentiment.toUpperCase()} ({ticket.sentimentScore}%)
                     </span>
-                    {getStatusBadge(ticket.status)}
+                    <div className="shrink-0">
+                      {getStatusBadge(ticket.status, true)}
+                    </div>
                   </div>
                 </div>
               )
@@ -267,11 +337,9 @@ export function LiveSupportDesk({
             <div>
               {/* Conversation Header */}
               <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 gap-2">
-            <div className="flex items-center gap-3">
-              <div className="size-10 rounded-xl bg-blue-50 text-[#2563EB] flex items-center justify-center font-bold text-sm border border-blue-100">
-                {selectedTicket.customerAvatar}
-              </div>
-              <div>
+            <div className="flex items-center gap-3 min-w-0">
+              {renderCustomerAvatar(selectedTicket.customerAvatar, selectedTicket.customerName, "size-10")}
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-extrabold text-sm text-[#0F172A]">
                     {selectedTicket.customerName}
@@ -303,8 +371,19 @@ export function LiveSupportDesk({
               </div>
             </div>
 
-            <div className="text-right">
+            <div className="flex items-center gap-2 shrink-0">
               {getStatusBadge(selectedTicket.status)}
+              {onDeleteTicket && (
+                <button
+                  type="button"
+                  onClick={() => setTicketToDelete(selectedTicket)}
+                  className="size-7 rounded-xl border border-slate-200 text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 flex items-center justify-center transition cursor-pointer"
+                  title="Delete ticket"
+                  aria-label="Delete ticket"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              )}
             </div>
           </div>
 
@@ -723,6 +802,80 @@ export function LiveSupportDesk({
             >
               Close Snippet Viewer
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Ticket Confirmation Dialog */}
+      {ticketToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+          onClick={() => setTicketToDelete(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-200/90 space-y-4 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header / Icon */}
+            <div className="flex items-start gap-3.5">
+              <div className="size-11 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center border border-red-100 shrink-0">
+                <Trash2 className="size-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-extrabold text-[#0F172A]">
+                  Delete Support Ticket?
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Are you sure you want to permanently delete this ticket from the live queue and database? This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            {/* Ticket Summary Box */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-mono font-bold text-[#2563EB]">
+                  {ticketToDelete.ticketNumber}
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  {ticketToDelete.timeAgo}
+                </span>
+              </div>
+              <div className="font-semibold text-slate-800">
+                {ticketToDelete.customerName}
+                {ticketToDelete.orderId && (
+                  <span className="text-slate-500 font-normal"> • Order {ticketToDelete.orderId}</span>
+                )}
+              </div>
+              <div className="text-[11px] text-slate-600 line-clamp-1 italic">
+                &ldquo;{ticketToDelete.intent}&rdquo;
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setTicketToDelete(null)}
+                className="rounded-xl border-slate-200 text-slate-700 font-semibold text-xs h-10 px-4 cursor-pointer hover:bg-slate-50"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  if (onDeleteTicket) {
+                    onDeleteTicket(ticketToDelete.id)
+                  }
+                  setTicketToDelete(null)
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl text-xs h-10 px-4 shadow-xs flex items-center gap-2 cursor-pointer"
+              >
+                <Trash2 className="size-3.5" />
+                <span>Delete Ticket</span>
+              </Button>
+            </div>
           </div>
         </div>
       )}

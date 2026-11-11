@@ -2,7 +2,7 @@ import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "ax
 
 // Backend Server Root URL (FastAPI)
 export const BACKEND_ROOT_URL = (
-  process.env.NEXT_PUBLIC_BACKEND_URL || "https://reslove-backend-latest.onrender.com"
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"
 ).replace(/\/$/, "")
 
 // Backend API v1 Base Route matching FastAPI prefix "/api/v1"

@@ -108,7 +108,19 @@ async def get_optional_current_user(
     if not token:
         return None
 
-    payload = decode_jwt(token)
+    try:
+        payload = decode_jwt(token, expected_type="access")
+    except ValueError as e:
+        if "expired" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has expired",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return None
+    except Exception:
+        return None
+
     if not payload:
         return None
 

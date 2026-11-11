@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import func
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col, desc, select
 
@@ -76,7 +77,16 @@ class TicketService:
     @classmethod
     async def get_ticket_by_id(cls, db: AsyncSession, ticket_id: uuid.UUID) -> Optional[Ticket]:
         """Fetches a single ticket with full relations loaded."""
-        stmt = select(Ticket).where(Ticket.id == ticket_id)
+        stmt = (
+            select(Ticket)
+            .where(Ticket.id == ticket_id)
+            .options(
+                selectinload(Ticket.messages),
+                selectinload(Ticket.diagnostic_steps),
+                selectinload(Ticket.ai_briefing),
+                selectinload(Ticket.feedback),
+            )
+        )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -124,13 +134,17 @@ class TicketService:
         random_suffix = str(uuid.uuid4().int)[:4]
         ticket_number = f"TICK-{random_suffix}"
 
+        # Automatically generate order_id on backend if not provided
+        order_id = payload.order_id.strip() if (payload.order_id and payload.order_id.strip()) else f"ORD-{random_suffix}"
+        order_amount = payload.order_amount.strip() if (payload.order_amount and payload.order_amount.strip()) else "$149.00"
+
         ticket = Ticket(
             ticket_number=ticket_number,
             customer_name=payload.customer_name,
             customer_email=payload.customer_email,
             customer_avatar=payload.customer_avatar or f"https://api.dicebear.com/7.x/avataaars/svg?seed={payload.customer_name}",
-            order_id=payload.order_id,
-            order_amount=payload.order_amount,
+            order_id=order_id,
+            order_amount=order_amount,
             channel=payload.channel,
             status=TicketStatus.AI_TROUBLESHOOTING,
             priority=TicketPriority.MEDIUM,
@@ -146,8 +160,8 @@ class TicketService:
             await cls.process_customer_message(db, ticket, payload.initial_message)
 
         await db.commit()
-        await db.refresh(ticket)
-        return ticket
+        refreshed = await cls.get_ticket_by_id(db, ticket.id)
+        return refreshed or ticket
 
     @classmethod
     async def process_customer_message(
@@ -234,7 +248,13 @@ class TicketService:
 
             # Generate AI Copilot Briefing for human operator
             conv_snippet = f"Customer ({ticket.customer_name}): {sanitized_text}"
-            attempted = [step.title for step in (ticket.diagnostic_steps or [])]
+            diag_stmt = (
+                select(DiagnosticStep)
+                .where(DiagnosticStep.ticket_id == ticket.id)
+                .order_by(DiagnosticStep.step_number)
+            )
+            diag_steps = (await db.execute(diag_stmt)).scalars().all()
+            attempted = [step.title for step in diag_steps]
             briefing_dict = await LLMRouter.generate_ai_briefing(
                 ticket.ticket_number,
                 ticket.customer_name,
@@ -242,8 +262,10 @@ class TicketService:
                 attempted,
             )
 
-            # Save or update AI Briefing
-            if not ticket.ai_briefing:
+            # Save or update AI Briefing safely without lazy-loading
+            briefing_stmt = select(AIBriefing).where(AIBriefing.ticket_id == ticket.id)
+            existing_briefing = (await db.execute(briefing_stmt)).scalars().first()
+            if not existing_briefing:
                 briefing = AIBriefing(
                     ticket_id=ticket.id,
                     core_issue=briefing_dict.get("core_issue", "Customer inquiry escalated for specialist resolution."),
@@ -363,8 +385,8 @@ Guidelines:
         )
         db.add(sys_msg)
         await db.commit()
-        await db.refresh(ticket)
-        return ticket
+        refreshed = await cls.get_ticket_by_id(db, ticket.id)
+        return refreshed or ticket
 
     @classmethod
     async def submit_feedback(
@@ -385,3 +407,13 @@ Guidelines:
         await db.commit()
         await db.refresh(feedback)
         return feedback
+
+    @classmethod
+    async def delete_ticket(cls, db: AsyncSession, ticket_id: uuid.UUID) -> bool:
+        """Deletes a ticket and cascades deletion to associated messages, diagnostic steps, and briefings."""
+        ticket = await cls.get_ticket_by_id(db, ticket_id)
+        if not ticket:
+            return False
+        await db.delete(ticket)
+        await db.commit()
+        return True

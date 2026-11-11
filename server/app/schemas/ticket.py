@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.diagnostic import StepStatus
 from app.models.feedback import FeedbackSentiment
@@ -114,6 +114,27 @@ class TicketCreate(BaseModel):
     order_amount: Optional[str] = None
     channel: Channel = Channel.WEB_CHAT
     initial_message: Optional[str] = None
+
+    @field_validator("channel", mode="before")
+    @classmethod
+    def normalize_channel(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            mapping = {
+                "web_chat": Channel.WEB_CHAT,
+                "web chat": Channel.WEB_CHAT,
+                "whatsapp": Channel.WHATSAPP,
+                "email": Channel.EMAIL,
+                "mobile_app": Channel.MOBILE_APP,
+                "mobile app": Channel.MOBILE_APP,
+                "api": Channel.WEB_CHAT,
+            }
+            clean = v.strip().lower()
+            if clean in mapping:
+                return mapping[clean]
+            for member in Channel:
+                if member.value.lower() == clean or member.name.lower() == clean:
+                    return member
+        return v
 
 
 class TicketUpdate(BaseModel):

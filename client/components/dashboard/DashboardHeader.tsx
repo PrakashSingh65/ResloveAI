@@ -6,6 +6,7 @@ import {
   Bot,
   Search,
   Sparkles,
+  Plus,
   LogOut,
   ChevronDown,
   Headphones,
@@ -20,7 +21,7 @@ interface DashboardHeaderProps {
   onStatusChange: (status: "available" | "busy" | "away") => void
   searchQuery: string
   onSearchChange: (query: string) => void
-  onSimulateTicket: () => void
+  onCreateTicket: () => void
   escalatedCount: number
   onLogout?: () => void
 }
@@ -31,7 +32,7 @@ export function DashboardHeader({
   onStatusChange,
   searchQuery,
   onSearchChange,
-  onSimulateTicket,
+  onCreateTicket,
   escalatedCount,
   onLogout,
 }: DashboardHeaderProps) {
@@ -134,16 +135,16 @@ export function DashboardHeader({
 
         {/* Right: Quick actions */}
         <div className="flex items-center gap-2 sm:gap-2.5">
-          {/* Simulate New Ticket */}
+          {/* Create New Ticket */}
           <Button
             size="sm"
-            onClick={onSimulateTicket}
-            className="bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:from-[#1D4ED8] hover:to-[#7C3AED] text-white font-semibold rounded-xl text-xs h-9 px-3 shadow-xs flex items-center gap-1.5 cursor-pointer"
-            title="Simulate a new incoming customer escalation"
+            onClick={onCreateTicket}
+            className="bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:from-[#1D4ED8] hover:to-[#7C3AED] text-white font-semibold rounded-xl text-xs h-9 px-3.5 shadow-xs flex items-center gap-1.5 cursor-pointer"
+            title="Create a new customer ticket"
           >
-            <Sparkles className="size-3.5" />
-            <span className="hidden sm:inline">Simulate Escalation</span>
-            <span className="sm:hidden">+ Issue</span>
+            <Plus className="size-3.5" />
+            <span className="hidden sm:inline">+ Create Ticket</span>
+            <span className="sm:hidden">+ Ticket</span>
           </Button>
 
           {/* Live Queue Badge */}

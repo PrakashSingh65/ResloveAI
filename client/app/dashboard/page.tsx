@@ -17,6 +17,7 @@ import {
   MapPin,
   Loader2,
   Bell,
+  Plus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -30,7 +31,8 @@ import { TroubleshootingFlowView } from "@/components/dashboard/TroubleshootingF
 import { SentimentIntentView } from "@/components/dashboard/SentimentIntentView"
 import { FeedbackCSATView } from "@/components/dashboard/FeedbackCSATView"
 import { SimulatorTab } from "@/components/dashboard/SimulatorTab"
-import { INITIAL_TICKETS, SIMULATION_TEMPLATES } from "@/components/dashboard/dashboard-data"
+import { CreateTicketModal } from "@/components/dashboard/CreateTicketModal"
+import { INITIAL_TICKETS } from "@/components/dashboard/dashboard-data"
 import { Ticket, Message } from "@/components/dashboard/types"
 import { ticketsApi } from "@/lib/api/tickets"
 
@@ -44,7 +46,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = React.useState<
     "desk" | "rag" | "troubleshooting" | "sentiment" | "csat" | "simulator" | "profile"
   >("desk")
-  const [simulationIndex, setSimulationIndex] = React.useState(0)
+  const [showCreateModal, setShowCreateModal] = React.useState(false)
   const [notificationMessage, setNotificationMessage] = React.useState<string | null>(null)
 
   // Load live tickets from FastAPI backend on mount
@@ -58,7 +60,7 @@ export default function DashboardPage() {
           setSelectedTicket(live[0])
         }
       } catch (err) {
-        // Fallback to initial local tickets smoothly
+        // Fallback smoothly if backend is starting up
       }
     }
     fetchLiveTickets()
@@ -150,110 +152,32 @@ export default function DashboardPage() {
     }).catch(() => {})
   }
 
-  // Inject a new simulated customer escalation into the live queue
-  const handleSimulateIncomingTicket = () => {
-    const template = SIMULATION_TEMPLATES[simulationIndex % SIMULATION_TEMPLATES.length]
-    setSimulationIndex((prev) => prev + 1)
-
-    const newTicketNumber = `RES-${Math.floor(2000 + Math.random() * 7000)}`
-    const timeNow = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-
-    const newTicket: Ticket = {
-      id: `ticket-sim-${Date.now()}`,
-      ticketNumber: newTicketNumber,
-      customerName: template.customerName,
-      customerEmail: template.customerEmail,
-      customerAvatar: template.customerAvatar,
-      orderId: template.orderId,
-      orderAmount: template.orderAmount,
-      channel: template.channel,
-      status: "escalated",
-      priority: "high",
-      intent: template.intent,
-      intentConfidence: template.intentConfidence,
-      sentiment: template.sentiment,
-      sentimentScore: template.sentimentScore,
-      timeAgo: "Just now",
-      escalatedAgo: "Just now",
-      assignedAgent: user?.first_name ? user.first_name : "Sarah Miller",
-      diagnosticSteps: [
-        {
-          stepNumber: 1,
-          title: "Ingestion & Intent Classification",
-          instruction: `Identified customer issue: ${template.intent}`,
-          status: "completed",
-          resultNote: `Confidence score ${template.intentConfidence}%`,
-        },
-        {
-          stepNumber: 2,
-          title: "Vector SOP Retrieval",
-          instruction: `Queried ${template.docName}`,
-          status: "completed",
-          resultNote: "Relevant clause extracted with 0.97 cosine score",
-        },
-        {
-          stepNumber: 3,
-          title: "Automated Escalation Rule",
-          instruction: "Threshold exceeded for automated resolution; transferred to Human Desk",
-          status: "completed",
-          resultNote: "Pre-authorized briefing generated",
-        },
-      ],
-      ragCitation: {
-        docName: template.docName,
-        docType: template.docType,
-        similarityScore: 0.97,
-        clauseNumber: "Section 3.1 - Priority Escalation Protocol",
-        snippet: template.docSnippet,
-      },
-      aiBriefing: {
-        coreIssue: template.coreIssue,
-        rootCause: template.rootCause,
-        attemptedSteps: [
-          "Ingested customer description and parsed sentiment.",
-          `Cross-referenced internal SOP: ${template.docName}`,
-          "Auto-prepared 1-click replacement order payload.",
-        ],
-        recommendedAction: template.recommendedAction,
-        recommendedActionLabel: template.recommendedActionLabel,
-        confidence: template.intentConfidence,
-        urgencyScore: template.sentimentScore,
-        sentimentSummary: "Customer requires rapid confirmation. Zero explanation required.",
-      },
-      conversation: [
-        {
-          id: `sim-msg-1`,
-          sender: "customer",
-          senderName: template.customerName,
-          text: template.firstMessage,
-          timestamp: timeNow,
-        },
-        {
-          id: `sim-msg-2`,
-          sender: "ai",
-          senderName: "ResolveAI Agent",
-          text: `Hello ${template.customerName.split(" ")[0]}. I am reviewing your order ${template.orderId} and packaging scans right now.`,
-          timestamp: timeNow,
-          thoughts: `Intent: ${template.intent}. Sentiment: ${template.sentiment} (${template.sentimentScore}%). RAG SOP: ${template.docName}.`,
-        },
-        {
-          id: `sim-msg-3`,
-          sender: "system",
-          text: `⚠️ Escalation Handover: AI transferred chat session to Human Specialist with pre-approved 1-click resolution.`,
-          timestamp: timeNow,
-          isHandoffNotice: true,
-        },
-      ],
-    }
-
+  // Ingest new ticket created by the user or API
+  const handleTicketCreated = (newTicket: Ticket) => {
     setTickets((prev) => [newTicket, ...prev])
     setSelectedTicket(newTicket)
     setActiveTab("desk")
-
     setNotificationMessage(
-      `New escalation received: Ticket ${newTicketNumber} from ${template.customerName} (${template.intent})`
+      `New ticket created: ${newTicket.ticketNumber} from ${newTicket.customerName} (${newTicket.intent})`
     )
     setTimeout(() => setNotificationMessage(null), 5000)
+  }
+
+  // Handle deleting a ticket from the queue
+  const handleDeleteTicket = (ticketId: string) => {
+    setTickets((prev) => {
+      const remaining = prev.filter((t) => t.id !== ticketId)
+      if (selectedTicket?.id === ticketId) {
+        setSelectedTicket(remaining.length > 0 ? remaining[0] : null)
+      }
+      return remaining
+    })
+
+    setNotificationMessage("Ticket successfully removed from queue")
+    setTimeout(() => setNotificationMessage(null), 4000)
+
+    // Delete on backend asynchronously
+    ticketsApi.deleteTicket(ticketId).catch(() => {})
   }
 
   const escalatedCount = tickets.filter((t) => t.status === "escalated").length
@@ -285,7 +209,7 @@ export default function DashboardPage() {
         onStatusChange={setOperatorStatus}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        onSimulateTicket={handleSimulateIncomingTicket}
+        onCreateTicket={() => setShowCreateModal(true)}
         escalatedCount={escalatedCount}
         onLogout={isAuthenticated ? handleLogout : undefined}
       />
@@ -334,11 +258,11 @@ export default function DashboardPage() {
                 <span>Problem Simulator</span>
               </Button>
               <Button
-                onClick={handleSimulateIncomingTicket}
+                onClick={() => setShowCreateModal(true)}
                 className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-semibold rounded-xl text-xs h-10 px-4 shadow-xs flex items-center gap-2 cursor-pointer"
               >
-                <Sparkles className="size-3.5" />
-                <span>+ Simulate Escalation</span>
+                <Plus className="size-3.5" />
+                <span>+ Create Ticket</span>
               </Button>
             </div>
           </div>
@@ -445,6 +369,7 @@ export default function DashboardPage() {
               onSelectTicket={setSelectedTicket}
               onSendMessage={handleSendMessage}
               onResolveTicket={handleResolveTicket}
+              onDeleteTicket={handleDeleteTicket}
               searchFilter={searchQuery}
             />
           )}
@@ -556,6 +481,14 @@ export default function DashboardPage() {
           </div>
         </div>
       </footer>
+
+      {/* Real Customer Ticket Creation Modal */}
+      <CreateTicketModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onTicketCreated={handleTicketCreated}
+        user={user}
+      />
     </div>
   )
 }

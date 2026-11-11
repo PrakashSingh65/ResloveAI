@@ -63,6 +63,7 @@ class Settings:
         # 3. Database (PostgreSQL / Neon)
         self.DATABASE_URL: str = os.getenv("DATABASE_URL", "")
         self.DATABASE_URL_POOLED: Optional[str] = os.getenv("DATABASE_URL_POOLED", None)
+        self.SQL_ECHO: bool = _get_bool("SQL_ECHO", False)
 
         # 4. JWT Authentication Secrets & Lifespans
         self.SECRET_KEY: str = os.getenv("SECRET_KEY", "")
@@ -95,12 +96,21 @@ class Settings:
 
         # 7. AI & LLM (Groq & Google Gemini)
         self.GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        self.GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
         self.EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-004")
         self.VECTOR_DIMENSION: int = _get_int("VECTOR_DIMENSION", 768)
 
         self.GROQ_API_KEY: Optional[str] = os.getenv("GROQ_API_KEY", None)
-        self.GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
-        self.GROQ_FAST_MODEL: str = os.getenv("GROQ_FAST_MODEL", "llama-3.1-8b-instant")
+        self.GROQ_MODEL: str = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+        self.GROQ_FAST_MODEL: str = os.getenv("GROQ_FAST_MODEL", "openai/gpt-oss-20b")
+
+        # 8. Hugging Face for RAG Embeddings
+        self.HUGGINGFACE_API_KEY: Optional[str] = (
+            os.getenv("HUGGINGFACE_API_KEY") or os.getenv("HF_TOKEN") or None
+        )
+        self.HUGGINGFACE_EMBEDDING_MODEL: str = os.getenv(
+            "HUGGINGFACE_EMBEDDING_MODEL", "sentence-transformers/all-mpnet-base-v2"
+        )
 
         # =====================================================================
         # Runtime Validation (Fails fast if critical variables are missing)
