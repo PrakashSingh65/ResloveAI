@@ -97,3 +97,43 @@ async def get_current_verified_user(
             detail="User email is not verified.",
         )
     return current_user
+
+
+async def get_optional_current_user(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Optional[User]:
+    """Dependency that returns the current user if authenticated, or None if anonymous."""
+    token = extract_token_from_request(request)
+    if not token:
+        return None
+
+    try:
+        payload = decode_jwt(token, expected_type="access")
+    except ValueError as e:
+        if "expired" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has expired",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return None
+    except Exception:
+        return None
+
+    if not payload:
+        return None
+
+    user_id_str = payload.get("sub")
+    if not user_id_str:
+        return None
+
+    try:
+        user_uuid = uuid.UUID(user_id_str)
+    except (ValueError, TypeError):
+        return None
+
+    statement = select(User).where(User.id == user_uuid)
+    result = await db.execute(statement)
+    user = result.scalar_one_or_none()
+    return user if user and user.is_active else None

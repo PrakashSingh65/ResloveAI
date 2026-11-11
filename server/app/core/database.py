@@ -12,9 +12,15 @@ connect_args = {}
 if settings.is_ssl_required:
     connect_args["ssl"] = True
 
+# Silence noisy SQLAlchemy query logs unless SQL_ECHO is explicitly True
+if not settings.SQL_ECHO:
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.engine.Engine").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
+
 # Engine creation
 engine_kwargs = {
-    "echo": settings.DEBUG,
+    "echo": settings.SQL_ECHO,
     "future": True,
     "connect_args": connect_args,
 }
@@ -57,5 +63,11 @@ async def init_db() -> None:
     """Creates database tables asynchronously if they don't already exist."""
     async with engine.begin() as conn:
         logger.info("Initializing database tables...")
+        if not settings.async_database_url.startswith("sqlite"):
+            try:
+                from sqlalchemy import text
+                await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+            except Exception as ext_err:
+                logger.warning(f"Note on vector extension initialization: {ext_err}")
         await conn.run_sync(SQLModel.metadata.create_all)
         logger.info("Database tables initialized successfully.")

@@ -2,7 +2,7 @@ import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "ax
 
 // Backend Server Root URL (FastAPI)
 export const BACKEND_ROOT_URL = (
-  process.env.NEXT_PUBLIC_BACKEND_URL || "https://reslove-backend-latest.onrender.com"
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"
 ).replace(/\/$/, "")
 
 // Backend API v1 Base Route matching FastAPI prefix "/api/v1"
@@ -24,6 +24,21 @@ export const API_ROUTES = {
     GOOGLE: `${API_BASE_URL}/auth/google`,
     GOOGLE_CALLBACK: `${API_BASE_URL}/auth/google/callback`,
     GOOGLE_SYNC: `${API_BASE_URL}/auth/google/sync`,
+  },
+  TICKETS: {
+    LIST: `${API_BASE_URL}/tickets`,
+    METRICS: `${API_BASE_URL}/tickets/metrics`,
+    DETAIL: (id: string) => `${API_BASE_URL}/tickets/${id}`,
+    MESSAGES: (id: string) => `${API_BASE_URL}/tickets/${id}/messages`,
+    RESOLVE: (id: string) => `${API_BASE_URL}/tickets/${id}/resolve`,
+    FEEDBACK: (id: string) => `${API_BASE_URL}/tickets/${id}/feedback`,
+    SEED: `${API_BASE_URL}/tickets/seed-sample`,
+  },
+  KNOWLEDGE: {
+    DOCUMENTS: `${API_BASE_URL}/knowledge/documents`,
+    DETAIL: (id: string) => `${API_BASE_URL}/knowledge/documents/${id}`,
+    QUERY: `${API_BASE_URL}/knowledge/query`,
+    SEED: `${API_BASE_URL}/knowledge/seed`,
   },
 } as const
 

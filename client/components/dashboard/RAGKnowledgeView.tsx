@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { RAG_DOCUMENTS } from "./dashboard-data"
 import { RAGDocument } from "./types"
+import { ticketsApi } from "@/lib/api/tickets"
 
 export function RAGKnowledgeView() {
   const [documents, setDocuments] = React.useState<RAGDocument[]>(RAG_DOCUMENTS)
@@ -28,8 +29,30 @@ export function RAGKnowledgeView() {
   const [isIndexing, setIsIndexing] = React.useState(false)
   const [indexProgress, setIndexProgress] = React.useState(0)
 
-  const handleRunSearch = () => {
+  const handleRunSearch = async () => {
     setIsSearching(true)
+    try {
+      const res = await ticketsApi.queryKnowledge(testQuery, 1)
+      if (res && res.citations && res.citations.length > 0) {
+        const top = res.citations[0]
+        setActiveResult({
+          id: top.doc_id,
+          title: top.doc_name,
+          category: (top.doc_type.includes("Carrier") ? "Logistics" : "Product") as any,
+          chunksCount: 142,
+          similarityScore: top.similarity_score,
+          lastUpdated: "Active pgvector",
+          tags: ["Live RAG", top.doc_type],
+          fileSize: "pgvector indexed",
+          sampleSnippet: top.snippet,
+        })
+        setIsSearching(false)
+        return
+      }
+    } catch {
+      // Local fallback
+    }
+
     setTimeout(() => {
       setIsSearching(false)
       const q = testQuery.toLowerCase()
@@ -42,7 +65,7 @@ export function RAGKnowledgeView() {
       } else {
         setActiveResult(documents[0])
       }
-    }, 400)
+    }, 300)
   }
 
   const handleSimulateUpload = (e: React.FormEvent) => {

@@ -9,8 +9,34 @@ from app.schemas.auth import (
     UserRegister,
     UserResponse,
 )
+from app.schemas.knowledge import (
+    DocumentChunkSchema,
+    KnowledgeDocumentCreate,
+    KnowledgeDocumentSchema,
+    RAGCitation,
+    RAGQueryRequest,
+    RAGQueryResponse,
+)
+from app.schemas.ticket import (
+    AIBriefingCreate,
+    AIBriefingSchema,
+    CSATFeedbackCreate,
+    CSATFeedbackSchema,
+    DiagnosticStepCreate,
+    DiagnosticStepSchema,
+    DiagnosticStepUpdate,
+    MessageCreate,
+    MessageSchema,
+    TicketCreate,
+    TicketDetailResponse,
+    TicketMetricsResponse,
+    TicketResolutionRequest,
+    TicketSummaryResponse,
+    TicketUpdate,
+)
 
 __all__ = [
+    # Auth
     "AuthResponse",
     "UserRegister",
     "UserLogin",
@@ -20,4 +46,27 @@ __all__ = [
     "GoogleSyncRequest",
     "ChangePasswordRequest",
     "MessageResponse",
+    # Ticket & Support Desk
+    "MessageSchema",
+    "MessageCreate",
+    "DiagnosticStepSchema",
+    "DiagnosticStepCreate",
+    "DiagnosticStepUpdate",
+    "AIBriefingSchema",
+    "AIBriefingCreate",
+    "CSATFeedbackSchema",
+    "CSATFeedbackCreate",
+    "TicketCreate",
+    "TicketUpdate",
+    "TicketResolutionRequest",
+    "TicketSummaryResponse",
+    "TicketDetailResponse",
+    "TicketMetricsResponse",
+    # RAG & Knowledge
+    "DocumentChunkSchema",
+    "KnowledgeDocumentSchema",
+    "KnowledgeDocumentCreate",
+    "RAGCitation",
+    "RAGQueryRequest",
+    "RAGQueryResponse",
 ]

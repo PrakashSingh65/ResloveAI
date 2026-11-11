@@ -693,6 +693,9 @@
   .h-full {
     height: 100%;
   }
+  .max-h-\[92vh\] {
+    max-height: 92vh;
+  }
   .max-h-\[290px\] {
     max-height: 290px;
   }
@@ -859,6 +862,9 @@
   }
   .cursor-pointer {
     cursor: pointer;
+  }
+  .resize-none {
+    resize: none;
   }
   .appearance-none {
     appearance: none;
@@ -1179,6 +1185,9 @@
   .border-slate-800 {
     border-color: var(--color-slate-800);
   }
+  .border-violet-100 {
+    border-color: var(--color-violet-100);
+  }
   .border-violet-200 {
     border-color: var(--color-violet-200);
   }
@@ -1252,6 +1261,12 @@
     background-color: color-mix(in srgb, #000 40%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
       background-color: color-mix(in oklab, var(--color-black) 40%, transparent);
+    }
+  }
+  .bg-black\/50 {
+    background-color: color-mix(in srgb, #000 50%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-black) 50%, transparent);
     }
   }
   .bg-blue-50 {
@@ -1559,6 +1574,13 @@
     --tw-gradient-from: var(--color-blue-50);
     --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
   }
+  .from-blue-50\/90 {
+    --tw-gradient-from: color-mix(in srgb, oklch(97% 0.014 254.604) 90%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-gradient-from: color-mix(in oklab, var(--color-blue-50) 90%, transparent);
+    }
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
   .from-emerald-500 {
     --tw-gradient-from: var(--color-emerald-500);
     --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
@@ -1636,6 +1658,13 @@
   }
   .to-cyan-500 {
     --tw-gradient-to: var(--color-cyan-500);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+  .to-indigo-50\/70 {
+    --tw-gradient-to: color-mix(in srgb, oklch(96.2% 0.018 272.314) 70%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      --tw-gradient-to: color-mix(in oklab, var(--color-indigo-50) 70%, transparent);
+    }
     --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
   }
   .to-indigo-600 {
@@ -2000,6 +2029,9 @@
   }
   .text-\[\#2563EB\] {
     color: #2563EB;
+  }
+  .text-amber-300 {
+    color: var(--color-amber-300);
   }
   .text-amber-400 {
     color: var(--color-amber-400);
@@ -2381,6 +2413,9 @@
     .hover\:border-\[\#2563EB\]\/40:hover {
       border-color: color-mix(in oklab, #2563EB 40%, transparent);
     }
+    .hover\:border-blue-200:hover {
+      border-color: var(--color-blue-200);
+    }
     .hover\:border-slate-300:hover {
       border-color: var(--color-slate-300);
     }
@@ -2389,6 +2424,9 @@
     }
     .hover\:bg-\[\#7C3AED\]:hover {
       background-color: #7C3AED;
+    }
+    .hover\:bg-blue-50:hover {
+      background-color: var(--color-blue-50);
     }
     .hover\:bg-blue-50\/50:hover {
       background-color: color-mix(in srgb, oklch(97% 0.014 254.604) 50%, transparent);
@@ -2514,6 +2552,9 @@
     .hover\:text-slate-600:hover {
       color: var(--color-slate-600);
     }
+    .hover\:text-slate-700:hover {
+      color: var(--color-slate-700);
+    }
     .hover\:text-slate-800:hover {
       color: var(--color-slate-800);
     }
@@ -2638,6 +2679,9 @@
     .sm\:grid-cols-2 {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+    .sm\:grid-cols-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
     .sm\:grid-cols-4 {
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
@@ -2664,6 +2708,9 @@
     }
     .sm\:p-6 {
       padding: calc(var(--spacing) * 6);
+    }
+    .sm\:p-7 {
+      padding: calc(var(--spacing) * 7);
     }
     .sm\:p-8 {
       padding: calc(var(--spacing) * 8);

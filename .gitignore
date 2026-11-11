@@ -1,0 +1,31 @@
+# Root .gitignore for ResolveAI
+.env
+.env.*
+.env.local
+.env.production
+.env.development
+!.env.example
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# Python / FastAPI
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.db
+*.sqlite
+.pytest_cache/
+
+# Sensitive Keys and Certs
+*.pem
+*.key
+*.cert
+*.crt
+.secrets*

@@ -12,6 +12,7 @@ services:
     environment:
       - ENVIRONMENT=development
       - DEBUG=true
+      - SQL_ECHO=false
       - HOST=0.0.0.0
       - PORT=8000
     volumes:

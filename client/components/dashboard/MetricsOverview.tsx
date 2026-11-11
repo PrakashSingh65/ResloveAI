@@ -22,6 +22,11 @@ export function MetricsOverview({
   escalatedCount,
   resolvedCount,
 }: MetricsOverviewProps) {
+  const resolutionRate =
+    totalTicketsCount > 0
+      ? ((resolvedCount / totalTicketsCount) * 100).toFixed(1) + "%"
+      : "100%"
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
       {/* 1. Autonomous Resolution */}
@@ -33,10 +38,10 @@ export function MetricsOverview({
           </div>
         </div>
         <div className="mt-2 flex items-baseline gap-2">
-          <span className="text-2xl font-black text-[#0F172A] tracking-tight">73.8%</span>
+          <span className="text-2xl font-black text-[#0F172A] tracking-tight">{resolutionRate}</span>
           <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-0.5">
             <TrendingUp className="size-3" />
-            +4.8%
+            Live
           </span>
         </div>
         <div className="mt-1 text-[11px] text-slate-500">
