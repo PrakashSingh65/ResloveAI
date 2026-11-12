@@ -329,3 +329,78 @@ JSON:"""
             "urgency_score": 0.85,
             "sentiment_summary": "Frustrated - 48h SLA breached",
         }
+
+    @classmethod
+    async def generate_handoff_message(
+        cls,
+        customer_name: str,
+        intent: str,
+        user_text: str,
+        order_id: Optional[str] = None,
+        sentiment: Optional[str] = None,
+    ) -> str:
+        """
+        Generates an empathetic, context-aware handoff announcement using Groq or Gemini
+        explaining why the case is being transferred to a human specialist with zero context loss.
+        """
+        first_name = customer_name.split()[0] if customer_name else "there"
+
+        if os.getenv("ENVIRONMENT") == "testing" or settings.ENVIRONMENT == "testing":
+            return (
+                f"Hi {first_name}, I understand the urgency regarding your {intent.lower() if intent else 'issue'}. "
+                "I have escalated your file to our Senior Support Team with your complete diagnostic history "
+                "so a specialist can resolve this for you immediately without repeating any details."
+            )
+
+        prompt = f"""You are the ResolveAI Autonomous Support Agent assisting customer {customer_name}.
+The customer's inquiry requires immediate human specialist escalation.
+Customer Name: {customer_name}
+Customer Intent: {intent}
+Order ID: {order_id or 'N/A'}
+Sentiment / Urgency: {sentiment or 'Urgent'}
+Customer's Message: \"\"\"{user_text}\"\"\"
+
+Generate a warm, empathetic, and professional handoff message (2-3 sentences max) directly addressing {first_name}.
+Requirements:
+1. Greet them by first name ({first_name}).
+2. Acknowledge their exact issue with genuine empathy.
+3. Clearly inform them that you have handed their complete issue summary and order history to our Human Support Specialist, so they will NOT have to repeat anything.
+4. Keep it concise, reassuring, and realistic.
+
+Handoff Message:"""
+
+        # 1. Try Groq fast model
+        if groq_client:
+            for g_model in [settings.GROQ_FAST_MODEL or "openai/gpt-oss-20b", "openai/gpt-oss-120b"]:
+                try:
+                    response = await groq_client.chat.completions.create(
+                        model=g_model,
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": "You are the ResolveAI Support Agent. Provide concise, empathetic human-handoff announcements.",
+                            },
+                            {"role": "user", "content": prompt},
+                        ],
+                        temperature=0.3,
+                        max_tokens=140,
+                        timeout=2.5,
+                    )
+                    content = response.choices[0].message.content
+                    if content and content.strip():
+                        return content.strip().strip('"')
+                except Exception as g_err:
+                    logger.debug(f"Groq handoff notice note: {g_err}")
+                    continue
+
+        # 2. Try Gemini with non-blocking async call
+        gemini_text = await cls._generate_gemini_content(prompt, timeout_sec=2.5)
+        if gemini_text and gemini_text.strip():
+            return gemini_text.strip().strip('"')
+
+        # Fallback if external LLMs are unavailable
+        return (
+            f"Hi {first_name}, I understand the urgency regarding your {intent.lower() if intent else 'inquiry'}. "
+            "I have transferred your case to our Senior Specialist along with your complete diagnostic history "
+            "so they can resolve this for you right away with zero repetition."
+        )

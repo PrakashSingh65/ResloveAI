@@ -47,7 +47,7 @@ async def get_desk_metrics(db: AsyncSession = Depends(get_db)):
 
 @router.get(
     "",
-    response_model=List[TicketSummaryResponse],
+    response_model=List[TicketDetailResponse],
     summary="List support tickets with filters",
 )
 async def list_tickets(

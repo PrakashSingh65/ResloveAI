@@ -49,7 +49,16 @@ class TicketService:
         offset: int = 0,
     ) -> List[Ticket]:
         """Queries tickets with optional status, priority, channel, and text search."""
-        query = select(Ticket).order_by(desc(Ticket.created_at))
+        query = (
+            select(Ticket)
+            .options(
+                selectinload(Ticket.messages),
+                selectinload(Ticket.diagnostic_steps),
+                selectinload(Ticket.ai_briefing),
+                selectinload(Ticket.feedback),
+            )
+            .order_by(desc(Ticket.created_at))
+        )
 
         if status_filter:
             query = query.where(Ticket.status == status_filter)
@@ -272,15 +281,24 @@ class TicketService:
                 )
                 db.add(briefing)
 
-            # Post handoff notice message
+            # Generate personalized AI handoff announcement using Groq / Gemini
+            handoff_text = await LLMRouter.generate_handoff_message(
+                customer_name=ticket.customer_name,
+                intent=ticket.intent or "Inquiry",
+                user_text=sanitized_text,
+                order_id=ticket.order_id,
+                sentiment=ticket.sentiment.value if ticket.sentiment else "urgent",
+            )
+
+            # Post dynamic AI handoff notice message
             handoff_msg = Message(
                 ticket_id=ticket.id,
                 sender=MessageSender.AI,
                 sender_name="ResolveAI Assistant",
-                text="I notice this issue requires priority specialist handling. I have escalated your case to our Senior Support Team with your complete diagnostic history. An agent is reviewing your file now.",
+                text=handoff_text,
                 is_handoff_notice=True,
                 metadata_json={
-                    "confidence": "94%",
+                    "confidence": f"{int((ticket.intent_confidence or 0.94) * 100)}%",
                     "actionTaken": "Escalated to Human Desk",
                 },
             )

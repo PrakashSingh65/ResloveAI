@@ -46,7 +46,13 @@ export default function DashboardPage() {
         const live = await ticketsApi.listTickets()
         if (isMounted && live && live.length > 0) {
           setTickets(live)
-          setSelectedTicket(live[0])
+          setSelectedTicket((prev) => {
+            if (prev) {
+              const matched = live.find((t) => t.id === prev.id)
+              if (matched) return matched
+            }
+            return live[0]
+          })
         }
       } catch (err) {
         // Fallback smoothly if backend is starting up
@@ -57,6 +63,22 @@ export default function DashboardPage() {
       isMounted = false
     }
   }, [])
+
+  // Handle selecting a ticket and ensuring full conversation details are populated
+  const handleSelectTicket = async (ticket: Ticket) => {
+    setSelectedTicket(ticket)
+    if (!ticket.conversation || ticket.conversation.length === 0) {
+      try {
+        const full = await ticketsApi.getTicket(ticket.id)
+        if (full) {
+          setSelectedTicket(full)
+          setTickets((prev) => prev.map((t) => (t.id === full.id ? full : t)))
+        }
+      } catch {
+        // keep selected ticket
+      }
+    }
+  }
 
   const handleLogout = async () => {
     try {
@@ -284,7 +306,7 @@ export default function DashboardPage() {
             <LiveSupportDesk
               tickets={tickets}
               selectedTicket={selectedTicket}
-              onSelectTicket={setSelectedTicket}
+              onSelectTicket={handleSelectTicket}
               onSendMessage={handleSendMessage}
               onResolveTicket={handleResolveTicket}
               onDeleteTicket={handleDeleteTicket}
