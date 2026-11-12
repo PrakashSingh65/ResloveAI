@@ -163,7 +163,7 @@ export function CreateTicketModal({
           },
           {
             stepNumber: 2,
-            title: "RAG SOP Context Search",
+            title: "Policy & Diagnostic Verification",
             instruction: "Queried internal operational handbook",
             status: "completed",
             resultNote: "Matched resolution protocol with 0.95 confidence",
@@ -176,13 +176,6 @@ export function CreateTicketModal({
             resultNote: "Operator briefing prepared",
           },
         ],
-        ragCitation: {
-          docName: "Carrier_SOP_2026.pdf",
-          docType: "Carrier SOP",
-          similarityScore: 0.95,
-          clauseNumber: "Section 3.1 - Rapid Handoff",
-          snippet: "Customer reported issue requires immediate verified action from human operator console.",
-        },
         aiBriefing: {
           coreIssue: initialMessage.trim(),
           rootCause: "Live inquiry ingested from user session requiring operator approval.",
@@ -243,7 +236,7 @@ export function CreateTicketModal({
               <span>Create Support Ticket</span>
             </div>
             <p className="text-xs text-slate-500">
-              Ingest a real inquiry into ResolveAI&apos;s AI triage, intent classification, and RAG SOP pipeline.
+              Ingest a real inquiry into ResolveAI&apos;s AI triage, intent classification, and diagnostic pipeline.
             </p>
           </div>
           <button
@@ -379,7 +372,7 @@ export function CreateTicketModal({
                 <MessageSquare className="size-3 text-slate-400" />
                 <span>Customer Inquiry / Problem Description</span>
               </span>
-              <span className="text-[10px] text-slate-400 font-normal">Parsed by RAG & LLM Router</span>
+              <span className="text-[10px] text-slate-400 font-normal">Parsed by AI Diagnostic Engine</span>
             </label>
             <textarea
               required

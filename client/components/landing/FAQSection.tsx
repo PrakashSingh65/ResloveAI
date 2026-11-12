@@ -13,11 +13,11 @@ import {
 const FAQS = [
   {
     q: "How does ResolveAI differ from standard support chatbots?",
-    a: "Standard chatbots typically repeat generic FAQ links and get stuck in repetitive loops. ResolveAI is an autonomous agent with step-by-step diagnostic workflows. It reads your internal SOPs via RAG, actively guides users through verification steps, and when an issue is truly unresolved, creates a support ticket and executes a seamless human handoff with full context.",
+    a: "Standard chatbots typically repeat generic FAQ links and get stuck in repetitive loops. ResolveAI is an autonomous agent with step-by-step diagnostic workflows. It applies enterprise diagnostic policies, actively guides users through verification steps, and when an issue is truly unresolved, creates a support ticket and executes a seamless human handoff with full context.",
   },
   {
-    q: "How does the RAG Knowledge Base stay up-to-date?",
-    a: "ResolveAI continuously embeds and indexes your internal documentation, return policies, carrier guidelines, and FAQs. When you upload or modify documents, the vector index refreshes automatically so the AI never offers outdated or hallucinated information.",
+    q: "How does ResolveAI ensure zero customer repetition during human handoff?",
+    a: "When a case escalates, ResolveAI's Copilot synthesizes an AI Executive Briefing for the human agent. The agent immediately sees the exact core issue, root cause, checklist of tests already tried, and a 1-click resolution button — so the customer never has to re-explain their situation.",
   },
   {
     q: "What triggers an automatic escalation to a human agent?",

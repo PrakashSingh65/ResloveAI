@@ -1,5 +1,5 @@
 import { apiClient, API_ROUTES } from "./axios"
-import { Ticket, Message, DiagnosticStep, RAGCitation, AIBriefing } from "@/components/dashboard/types"
+import { Ticket, Message, DiagnosticStep, AIBriefing } from "@/components/dashboard/types"
 
 export interface TicketMetrics {
   total_tickets: number
@@ -40,22 +40,6 @@ export interface CSATPayload {
   customer_name?: string
 }
 
-export interface RAGCitationResult {
-  doc_id: string
-  doc_name: string
-  doc_type: string
-  clause_number?: string
-  similarity_score: number
-  snippet: string
-  source_url?: string
-}
-
-export interface RAGQueryResponse {
-  query: string
-  citations: RAGCitationResult[]
-  retrieval_latency_ms: number
-}
-
 function formatTimeAgo(isoString?: string): string {
   if (!isoString) return "Just now"
   const date = new Date(isoString)
@@ -90,14 +74,6 @@ export function mapApiTicketToTicket(raw: any): Ticket {
     status: d.status || "pending",
     resultNote: d.result_note || d.resultNote,
   }))
-
-  const ragCitation: RAGCitation = raw.rag_citation || raw.ragCitation || {
-    docName: "Carrier_SOP_2026.pdf",
-    docType: "Carrier SOP",
-    similarityScore: 0.94,
-    clauseNumber: "Clause 4.1",
-    snippet: "Standard operational procedure for automated delivery and account dispute resolution.",
-  }
 
   const aiBriefing: AIBriefing = raw.ai_briefing
     ? {
@@ -149,7 +125,6 @@ export function mapApiTicketToTicket(raw: any): Ticket {
     assignedAgent: raw.assigned_agent_name || raw.assignedAgent,
     conversation,
     diagnosticSteps,
-    ragCitation,
     aiBriefing,
     resolutionDetails: raw.resolution_action
       ? {
@@ -235,21 +210,6 @@ export const ticketsApi = {
   // 7. Seed sample tickets on first setup
   async seedSampleTickets(): Promise<{ message: string; seeded: number }> {
     const res = await apiClient.post(API_ROUTES.TICKETS.SEED)
-    return res.data
-  },
-
-  // 8. Query RAG Knowledge Base
-  async queryKnowledge(query: string, top_k: number = 3): Promise<RAGQueryResponse> {
-    const res = await apiClient.post<RAGQueryResponse>(API_ROUTES.KNOWLEDGE.QUERY, {
-      query,
-      top_k,
-    })
-    return res.data
-  },
-
-  // 9. Seed default knowledge documents
-  async seedKnowledge(): Promise<{ message: string; documents_added: number }> {
-    const res = await apiClient.post(API_ROUTES.KNOWLEDGE.SEED)
     return res.data
   },
 }

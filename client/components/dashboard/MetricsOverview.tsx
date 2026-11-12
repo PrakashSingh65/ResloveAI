@@ -83,19 +83,19 @@ export function MetricsOverview({
         <div className="mt-1 text-[11px] text-slate-500">Avg human resolution: 1m 15s</div>
       </div>
 
-      {/* 4. RAG Precision */}
+      {/* 4. Handoff Precision */}
       <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs hover:border-[#2563EB]/40 transition group">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-500">RAG Grounding Fidelity</span>
+          <span className="text-xs font-semibold text-slate-500">Handoff Precision</span>
           <div className="size-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
             <FileCheck2 className="size-4" />
           </div>
         </div>
         <div className="mt-2 flex items-baseline gap-2">
-          <span className="text-2xl font-black text-emerald-600 tracking-tight">98.6%</span>
-          <span className="text-[11px] font-semibold text-slate-500">Cosine &gt; 0.90</span>
+          <span className="text-2xl font-black text-emerald-600 tracking-tight">99.4%</span>
+          <span className="text-[11px] font-semibold text-slate-500">Zero-Repeat</span>
         </div>
-        <div className="mt-1 text-[11px] text-slate-500">5 internal policy stores synced</div>
+        <div className="mt-1 text-[11px] text-slate-500">Full diagnostic context forwarded</div>
       </div>
 
       {/* 5. CSAT Satisfaction */}

@@ -34,12 +34,6 @@ export const API_ROUTES = {
     FEEDBACK: (id: string) => `${API_BASE_URL}/tickets/${id}/feedback`,
     SEED: `${API_BASE_URL}/tickets/seed-sample`,
   },
-  KNOWLEDGE: {
-    DOCUMENTS: `${API_BASE_URL}/knowledge/documents`,
-    DETAIL: (id: string) => `${API_BASE_URL}/knowledge/documents/${id}`,
-    QUERY: `${API_BASE_URL}/knowledge/query`,
-    SEED: `${API_BASE_URL}/knowledge/seed`,
-  },
 } as const
 
 // Create standard Axios instance configured for FastAPI backend
@@ -53,21 +47,7 @@ export const apiClient: AxiosInstance = axios.create({
   },
 })
 
-// Request Interceptor: Attach bearer token fallback if present in localStorage
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("resolve_access_token")
-      if (token && config.headers && !config.headers.Authorization) {
-        config.headers.Authorization = `Bearer ${token}`
-      }
-    }
-    return config
-  },
-  (error) => Promise.reject(error)
-)
-
-// Response Interceptor: Manage token storage & auto-refresh
+// Response Interceptor: Manage transparent cookie-based auto-refresh
 let isRefreshing = false
 let failedQueue: Array<{
   resolve: (value?: unknown) => void
@@ -86,13 +66,7 @@ const processQueue = (error: unknown) => {
 }
 
 apiClient.interceptors.response.use(
-  (response) => {
-    // If auth response returns access_token, sync to localStorage as client fallback
-    if (response?.data?.access_token && typeof window !== "undefined") {
-      localStorage.setItem("resolve_access_token", response.data.access_token)
-    }
-    return response
-  },
+  (response) => response,
   async (error: AxiosError<{ detail?: string | Array<{ msg: string }> }>) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean
@@ -118,16 +92,13 @@ apiClient.interceptors.response.use(
       isRefreshing = true
 
       try {
-        const refreshResponse = await apiClient.post("/auth/refresh")
-        if (refreshResponse?.data?.access_token && typeof window !== "undefined") {
-          localStorage.setItem("resolve_access_token", refreshResponse.data.access_token)
-        }
+        // Transparently rotate HttpOnly cookies via backend /auth/refresh
+        await apiClient.post("/auth/refresh")
         processQueue(null)
         return apiClient(originalRequest)
       } catch (refreshErr) {
         processQueue(refreshErr)
         if (typeof window !== "undefined") {
-          localStorage.removeItem("resolve_access_token")
           localStorage.removeItem("resolve_user")
         }
         return Promise.reject(refreshErr)

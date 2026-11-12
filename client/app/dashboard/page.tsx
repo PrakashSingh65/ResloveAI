@@ -6,10 +6,6 @@ import { useRouter } from "next/navigation"
 import {
   Sparkles,
   Headphones,
-  Database,
-  GitBranch,
-  BrainCircuit,
-  HeartHandshake,
   Play,
   User,
   ShieldCheck,
@@ -26,11 +22,6 @@ import { useAuth } from "@/lib/auth-context"
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader"
 import { MetricsOverview } from "@/components/dashboard/MetricsOverview"
 import { LiveSupportDesk } from "@/components/dashboard/LiveSupportDesk"
-import { RAGKnowledgeView } from "@/components/dashboard/RAGKnowledgeView"
-import { TroubleshootingFlowView } from "@/components/dashboard/TroubleshootingFlowView"
-import { SentimentIntentView } from "@/components/dashboard/SentimentIntentView"
-import { FeedbackCSATView } from "@/components/dashboard/FeedbackCSATView"
-import { SimulatorTab } from "@/components/dashboard/SimulatorTab"
 import { CreateTicketModal } from "@/components/dashboard/CreateTicketModal"
 import { INITIAL_TICKETS } from "@/components/dashboard/dashboard-data"
 import { Ticket, Message } from "@/components/dashboard/types"
@@ -43,9 +34,7 @@ export default function DashboardPage() {
   const [selectedTicket, setSelectedTicket] = React.useState<Ticket | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
   const [operatorStatus, setOperatorStatus] = React.useState<"available" | "busy" | "away">("available")
-  const [activeTab, setActiveTab] = React.useState<
-    "desk" | "rag" | "troubleshooting" | "sentiment" | "csat" | "simulator" | "profile"
-  >("desk")
+  const [activeTab, setActiveTab] = React.useState<"desk" | "profile">("desk")
   const [showCreateModal, setShowCreateModal] = React.useState(false)
   const [notificationMessage, setNotificationMessage] = React.useState<string | null>(null)
 
@@ -57,7 +46,13 @@ export default function DashboardPage() {
         const live = await ticketsApi.listTickets()
         if (isMounted && live && live.length > 0) {
           setTickets(live)
-          setSelectedTicket(live[0])
+          setSelectedTicket((prev) => {
+            if (prev) {
+              const matched = live.find((t) => t.id === prev.id)
+              if (matched) return matched
+            }
+            return live[0]
+          })
         }
       } catch (err) {
         // Fallback smoothly if backend is starting up
@@ -68,6 +63,22 @@ export default function DashboardPage() {
       isMounted = false
     }
   }, [])
+
+  // Handle selecting a ticket and ensuring full conversation details are populated
+  const handleSelectTicket = async (ticket: Ticket) => {
+    setSelectedTicket(ticket)
+    if (!ticket.conversation || ticket.conversation.length === 0) {
+      try {
+        const full = await ticketsApi.getTicket(ticket.id)
+        if (full) {
+          setSelectedTicket(full)
+          setTickets((prev) => prev.map((t) => (t.id === full.id ? full : t)))
+        }
+      } catch {
+        // keep selected ticket
+      }
+    }
+  }
 
   const handleLogout = async () => {
     try {
@@ -207,9 +218,6 @@ export default function DashboardPage() {
         operatorName={user?.first_name || "Sarah Miller"}
         operatorStatus={operatorStatus}
         onStatusChange={setOperatorStatus}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onCreateTicket={() => setShowCreateModal(true)}
         escalatedCount={escalatedCount}
         onLogout={isAuthenticated ? handleLogout : undefined}
       />
@@ -250,19 +258,11 @@ export default function DashboardPage() {
 
             <div className="flex flex-wrap items-center gap-2.5 shrink-0">
               <Button
-                onClick={() => setActiveTab("simulator")}
-                variant="outline"
-                className="border-slate-200 text-slate-700 hover:text-[#2563EB] font-semibold rounded-xl text-xs h-10 px-3.5 flex items-center gap-2 cursor-pointer"
-              >
-                <Play className="size-3.5 text-[#2563EB] fill-[#2563EB]" />
-                <span>Problem Simulator</span>
-              </Button>
-              <Button
                 onClick={() => setShowCreateModal(true)}
                 className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-semibold rounded-xl text-xs h-10 px-4 shadow-xs flex items-center gap-2 cursor-pointer"
               >
                 <Plus className="size-3.5" />
-                <span>+ Create Ticket</span>
+                <span>Create Ticket</span>
               </Button>
             </div>
           </div>
@@ -289,66 +289,6 @@ export default function DashboardPage() {
             </button>
 
             <button
-              onClick={() => setActiveTab("rag")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                activeTab === "rag"
-                  ? "bg-white text-[#2563EB] shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Database className="size-4 text-[#2563EB]" />
-              <span>RAG Knowledge Store</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("troubleshooting")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                activeTab === "troubleshooting"
-                  ? "bg-white text-[#2563EB] shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <GitBranch className="size-4 text-[#8B5CF6]" />
-              <span>Smart Troubleshooting Trees</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("sentiment")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                activeTab === "sentiment"
-                  ? "bg-white text-[#2563EB] shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <BrainCircuit className="size-4 text-emerald-600" />
-              <span>Sentiment & Intent</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("csat")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                activeTab === "csat"
-                  ? "bg-white text-[#2563EB] shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <HeartHandshake className="size-4 text-amber-500" />
-              <span>Feedback & CSAT</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("simulator")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                activeTab === "simulator"
-                  ? "bg-white text-[#2563EB] shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Play className="size-4 text-violet-600 fill-violet-500" />
-              <span>Agentic Simulator</span>
-            </button>
-
-            <button
               onClick={() => setActiveTab("profile")}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                 activeTab === "profile"
@@ -366,23 +306,13 @@ export default function DashboardPage() {
             <LiveSupportDesk
               tickets={tickets}
               selectedTicket={selectedTicket}
-              onSelectTicket={setSelectedTicket}
+              onSelectTicket={handleSelectTicket}
               onSendMessage={handleSendMessage}
               onResolveTicket={handleResolveTicket}
               onDeleteTicket={handleDeleteTicket}
               searchFilter={searchQuery}
             />
           )}
-
-          {activeTab === "rag" && <RAGKnowledgeView />}
-
-          {activeTab === "troubleshooting" && <TroubleshootingFlowView />}
-
-          {activeTab === "sentiment" && <SentimentIntentView />}
-
-          {activeTab === "csat" && <FeedbackCSATView />}
-
-          {activeTab === "simulator" && <SimulatorTab />}
 
           {activeTab === "profile" && (
             <div className="space-y-6">
@@ -471,9 +401,6 @@ export default function DashboardPage() {
           <div className="flex items-center gap-5">
             <Link href="/" className="hover:text-slate-800 transition-colors">
               Landing Page
-            </Link>
-            <Link href="/#simulator" className="hover:text-slate-800 transition-colors">
-              Landing Simulator
             </Link>
             <Link href="/#handoff" className="hover:text-slate-800 transition-colors">
               Handoff Desk Section

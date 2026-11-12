@@ -28,12 +28,10 @@ from app.schemas.ticket import (
 )
 from app.services.guardrails import (
     assess_customer_frustration,
-    check_rag_groundedness,
     detect_prompt_injection,
     mask_pii,
 )
 from app.services.llm_router import LLMRouter
-from app.services.rag_service import RAGService
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +49,16 @@ class TicketService:
         offset: int = 0,
     ) -> List[Ticket]:
         """Queries tickets with optional status, priority, channel, and text search."""
-        query = select(Ticket).order_by(desc(Ticket.created_at))
+        query = (
+            select(Ticket)
+            .options(
+                selectinload(Ticket.messages),
+                selectinload(Ticket.diagnostic_steps),
+                selectinload(Ticket.ai_briefing),
+                selectinload(Ticket.feedback),
+            )
+            .order_by(desc(Ticket.created_at))
+        )
 
         if status_filter:
             query = query.where(Ticket.status == status_filter)
@@ -236,12 +243,7 @@ class TicketService:
             or (ticket.sentiment == CustomerSentiment.FRUSTRATED and calc_sentiment_score >= 0.75)
         )
 
-        # Step 4: RAG Retrieval
-        citations = await RAGService.query_relevant_chunks(db, sanitized_text, top_k=2)
-        citation_texts = [c.snippet for c in citations]
-        top_citation = citations[0] if citations else None
-
-        # Step 5: Handle Smart Escalation if triggered
+        # Step 4: Handle Smart Escalation if triggered
         if should_escalate and ticket.status != TicketStatus.ESCALATED:
             ticket.status = TicketStatus.ESCALATED
             ticket.escalated_at = datetime.now(timezone.utc)
@@ -279,16 +281,24 @@ class TicketService:
                 )
                 db.add(briefing)
 
-            # Post handoff notice message
+            # Generate personalized AI handoff announcement using Groq / Gemini
+            handoff_text = await LLMRouter.generate_handoff_message(
+                customer_name=ticket.customer_name,
+                intent=ticket.intent or "Inquiry",
+                user_text=sanitized_text,
+                order_id=ticket.order_id,
+                sentiment=ticket.sentiment.value if ticket.sentiment else "urgent",
+            )
+
+            # Post dynamic AI handoff notice message
             handoff_msg = Message(
                 ticket_id=ticket.id,
                 sender=MessageSender.AI,
                 sender_name="ResolveAI Assistant",
-                text="I notice this issue requires priority specialist handling. I have escalated your case to our Senior Support Team with your complete diagnostic history. An agent is reviewing your file now.",
+                text=handoff_text,
                 is_handoff_notice=True,
                 metadata_json={
-                    "ragDoc": top_citation.doc_name if top_citation else None,
-                    "confidence": "94%",
+                    "confidence": f"{int((ticket.intent_confidence or 0.94) * 100)}%",
                     "actionTaken": "Escalated to Human Desk",
                 },
             )
@@ -297,13 +307,14 @@ class TicketService:
             await db.refresh(ticket)
             return customer_msg, handoff_msg
 
-        # Step 6: Generate Normal Conversational AI Answer
+        # Step 5: Generate Conversational AI Diagnostic Answer
         system_instruction = f"""You are the ResolveAI Support Agent assisting {ticket.customer_name}.
 Current Intent: {ticket.intent}. Order ID: {ticket.order_id or 'N/A'}.
-Relevant Company Policy / SOP:
-{top_citation.snippet if top_citation else 'Standard Support Guidelines apply.'}
 
-Guidelines:
+Support Policies & Diagnostic Rules:
+- Lost/delayed packages: verify tracking status, check depot delay windows (48-72h), initiate carrier traces.
+- Billing/refunds: verify invoice amount, offer 1-click refund authorization for eligible orders.
+- Hardware/device issues: guide customer through power cycle, firmware reset, or cable verification.
 - Be empathetic, concise, and professional.
 - Do not make false promises or hallucinate delivery dates.
 - If asking the user to perform a check, provide clear numbered instructions."""
@@ -318,9 +329,6 @@ Guidelines:
 
         ai_text = "".join(response_chunks).strip() or "I have logged your request and am verifying the records."
 
-        # Output Guardrail: Check Groundedness
-        groundedness_score = check_rag_groundedness(ai_text, citation_texts)
-
         # Build suggested quick replies
         suggested = ["Yes, performed check", "No, issue persists", "Speak to a human representative"]
 
@@ -331,10 +339,7 @@ Guidelines:
             text=ai_text,
             suggested_replies=suggested,
             metadata_json={
-                "ragDoc": top_citation.doc_name if top_citation else None,
-                "clause": top_citation.clause_number if top_citation else None,
                 "confidence": f"{int((ticket.intent_confidence or 0.85) * 100)}%",
-                "groundedness": groundedness_score,
             },
         )
         db.add(ai_msg)

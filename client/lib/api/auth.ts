@@ -71,6 +71,7 @@ export const authApi = {
   /**
    * Register a new user
    * POST /auth/register
+   * Cookies are automatically set by backend via Set-Cookie (HttpOnly)
    */
   async register(payload: UserRegisterPayload): Promise<AuthResponse> {
     const response = await apiClient.post<AuthResponse>("/auth/register", payload)
@@ -84,6 +85,7 @@ export const authApi = {
   /**
    * Log in user with credentials
    * POST /auth/login
+   * Cookies are automatically set by backend via Set-Cookie (HttpOnly)
    */
   async login(payload: UserLoginPayload): Promise<AuthResponse> {
     const response = await apiClient.post<AuthResponse>("/auth/login", payload)
@@ -109,6 +111,7 @@ export const authApi = {
   /**
    * Refresh session tokens
    * POST /auth/refresh
+   * Rotates HttpOnly cookies transparently via browser
    */
   async refresh(): Promise<AuthResponse> {
     const response = await apiClient.post<AuthResponse>("/auth/refresh")
@@ -125,7 +128,6 @@ export const authApi = {
       return response.data
     } finally {
       if (typeof window !== "undefined") {
-        localStorage.removeItem("resolve_access_token")
         localStorage.removeItem("resolve_user")
         notifyAuthChange()
       }

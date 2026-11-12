@@ -104,6 +104,13 @@ class AuthResponse(BaseModel):
     )
 
 
+class RefreshTokenRequest(BaseModel):
+    refresh_token: Optional[str] = Field(
+        default=None,
+        description="Optional refresh token string provided in request body when cookies are partitioned or blocked",
+    )
+
+
 class TokenResponse(BaseModel):
     access_token: str = Field(..., description="Short-lived JWT access token")
     refresh_token: str = Field(..., description="Secure rotating refresh token")

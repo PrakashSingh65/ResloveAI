@@ -96,27 +96,3 @@ def assess_customer_frustration(text: str) -> Tuple[float, bool]:
 
     return final_score, should_escalate
 
-
-def check_rag_groundedness(answer: str, retrieved_snippets: List[str]) -> float:
-    """
-    Heuristic lexical-grounding verification: calculates keyword overlap
-    between key noun phrases in the generated answer and the source snippets.
-    Returns groundedness score from 0.0 to 1.0.
-    """
-    if not retrieved_snippets:
-        return 1.0  # No RAG required for pure conversational turns
-
-    answer_words = set(re.findall(r"\b[A-Za-z0-9_]{4,}\b", answer.lower()))
-    if not answer_words:
-        return 1.0
-
-    context_words = set()
-    for snip in retrieved_snippets:
-        context_words.update(re.findall(r"\b[A-Za-z0-9_]{4,}\b", snip.lower()))
-
-    common = answer_words.intersection(context_words)
-    overlap_ratio = len(common) / len(answer_words)
-
-    # Scale to expected baseline (0.7+ is high grounding for natural dialogue)
-    score = min(1.0, overlap_ratio * 1.4)
-    return round(score, 2)

@@ -287,7 +287,7 @@ export function HumanDashboardPreview() {
               <span>Explore the Live ResolveAI Operator Console</span>
             </h3>
             <p className="text-xs text-slate-600 max-w-xl">
-              Switch tickets, test RAG semantic search, explore diagnostic flowcharts, submit CSAT surveys, and trigger live customer escalations.
+              Manage live tickets, inspect AI executive briefings, take over conversations in real time, and execute 1-click customer resolutions.
             </p>
           </div>
 

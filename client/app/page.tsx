@@ -2,7 +2,6 @@ import * as React from "react"
 import { Navbar } from "@/components/landing/Navbar"
 import { LandingBackground } from "@/components/landing/LandingBackground"
 import { Hero } from "@/components/landing/Hero"
-import { InteractiveSimulator } from "@/components/landing/InteractiveSimulator"
 import { FeaturesGrid } from "@/components/landing/FeaturesGrid"
 import { HumanDashboardPreview } from "@/components/landing/HumanDashboardPreview"
 import { ComparisonSection } from "@/components/landing/ComparisonSection"
@@ -18,7 +17,6 @@ export default function Home() {
       <Navbar />
       <main className="flex-1 relative z-10">
         <Hero />
-        <InteractiveSimulator />
         <FeaturesGrid />
         <HumanDashboardPreview />
         <ComparisonSection />

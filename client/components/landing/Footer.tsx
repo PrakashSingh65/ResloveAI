@@ -25,7 +25,7 @@ export function Footer() {
             </div>
 
             <p className="text-sm text-slate-500 max-w-sm leading-relaxed">
-              Autonomous customer support platform powered by LLMs, RAG knowledge retrieval, and intelligent human escalation. Built to solve problems, not just chat.
+              Autonomous customer support platform powered by LLMs, diagnostic policies, and zero-repetition human escalation. Built to solve problems, not just chat.
             </p>
 
             <div className="flex items-center gap-2 pt-1">
@@ -47,14 +47,14 @@ export function Footer() {
             </h4>
             <ul className="space-y-2.5 text-xs text-slate-600">
               <li>
-                <a href="#simulator" className="hover:text-[#2563EB] transition-colors flex items-center gap-1 group">
-                  <span>Autonomous Troubleshooting</span>
+                <a href="/dashboard" className="hover:text-[#2563EB] transition-colors flex items-center gap-1 group">
+                  <span>Autonomous Diagnostics & Desk</span>
                   <ArrowUpRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity text-[#2563EB]" />
                 </a>
               </li>
               <li>
                 <a href="#features" className="hover:text-[#2563EB] transition-colors flex items-center gap-1 group">
-                  <span>RAG Knowledge Grounding</span>
+                  <span>Zero-Repetition Human Handoff</span>
                   <ArrowUpRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity text-[#2563EB]" />
                 </a>
               </li>
@@ -142,7 +142,7 @@ export function Footer() {
             </a>
             <span className="text-slate-300">•</span>
             <span className="text-slate-400">
-              Powered by LLMs &amp; Hybrid RAG
+              Powered by Fast LLMs &amp; Autonomous Diagnostics
             </span>
           </div>
         </div>

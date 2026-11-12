@@ -13,7 +13,6 @@ export interface Message {
   isHandoffNotice?: boolean
   suggestedReplies?: string[]
   metadata?: {
-    ragDoc?: string
     confidence?: string
     actionTaken?: string
   }
@@ -25,15 +24,6 @@ export interface DiagnosticStep {
   instruction: string
   status: "completed" | "failed" | "in_progress" | "pending"
   resultNote?: string
-}
-
-export interface RAGCitation {
-  docName: string
-  docType: "Carrier SOP" | "Policy Guide" | "API Specs" | "Knowledge Base"
-  similarityScore: number
-  clauseNumber: string
-  snippet: string
-  sourceUrl?: string
 }
 
 export interface AIBriefing {
@@ -75,21 +65,8 @@ export interface Ticket {
   assignedAgent?: string
   conversation: Message[]
   diagnosticSteps: DiagnosticStep[]
-  ragCitation: RAGCitation
   aiBriefing: AIBriefing
   resolutionDetails?: ResolutionDetails
-}
-
-export interface RAGDocument {
-  id: string
-  title: string
-  category: "Logistics" | "Billing" | "Product" | "Security"
-  chunksCount: number
-  similarityScore: number
-  lastUpdated: string
-  tags: string[]
-  sampleSnippet: string
-  fileSize: string
 }
 
 export interface CSATFeedback {
@@ -102,14 +79,4 @@ export interface CSATFeedback {
   timestamp: string
   category: string
   humanAgent: string
-}
-
-export interface TroubleshootingFlowNode {
-  id: string
-  title: string
-  description: string
-  type: "start" | "analysis" | "rag" | "action" | "check" | "escalation" | "resolution"
-  successRate: string
-  avgTime: string
-  isAutomated: boolean
 }

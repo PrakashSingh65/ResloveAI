@@ -40,12 +40,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== "undefined") {
         localStorage.setItem("resolve_user", JSON.stringify(profile))
       }
-    } catch {
-      // If getMe fails (e.g. cookies expired), clear local cache
-      setUser(null)
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("resolve_user")
-        localStorage.removeItem("resolve_access_token")
+    } catch (err: unknown) {
+      // Only clear user if the server explicitly rejected authentication with 401 or 403.
+      // Retain the authenticated session during transient network blips or server restarts.
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 401 || status === 403) {
+        setUser(null)
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("resolve_user")
+        }
       }
     } finally {
       setIsLoading(false)
@@ -81,7 +84,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null)
       if (typeof window !== "undefined") {
         localStorage.removeItem("resolve_user")
-        localStorage.removeItem("resolve_access_token")
         window.dispatchEvent(new Event("resolve-auth-change"))
       }
       setIsLoading(false)
