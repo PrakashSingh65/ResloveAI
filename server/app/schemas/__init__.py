@@ -4,6 +4,7 @@ from app.schemas.auth import (
     GoogleAuthUrlResponse,
     GoogleSyncRequest,
     MessageResponse,
+    RefreshTokenRequest,
     TokenResponse,
     UserLogin,
     UserRegister,

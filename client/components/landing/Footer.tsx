@@ -47,8 +47,8 @@ export function Footer() {
             </h4>
             <ul className="space-y-2.5 text-xs text-slate-600">
               <li>
-                <a href="#simulator" className="hover:text-[#2563EB] transition-colors flex items-center gap-1 group">
-                  <span>Autonomous Troubleshooting</span>
+                <a href="/dashboard" className="hover:text-[#2563EB] transition-colors flex items-center gap-1 group">
+                  <span>Autonomous Diagnostics & Desk</span>
                   <ArrowUpRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity text-[#2563EB]" />
                 </a>
               </li>

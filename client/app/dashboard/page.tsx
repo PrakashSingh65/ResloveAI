@@ -22,7 +22,6 @@ import { useAuth } from "@/lib/auth-context"
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader"
 import { MetricsOverview } from "@/components/dashboard/MetricsOverview"
 import { LiveSupportDesk } from "@/components/dashboard/LiveSupportDesk"
-import { SimulatorTab } from "@/components/dashboard/SimulatorTab"
 import { CreateTicketModal } from "@/components/dashboard/CreateTicketModal"
 import { INITIAL_TICKETS } from "@/components/dashboard/dashboard-data"
 import { Ticket, Message } from "@/components/dashboard/types"
@@ -35,7 +34,7 @@ export default function DashboardPage() {
   const [selectedTicket, setSelectedTicket] = React.useState<Ticket | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
   const [operatorStatus, setOperatorStatus] = React.useState<"available" | "busy" | "away">("available")
-  const [activeTab, setActiveTab] = React.useState<"desk" | "simulator" | "profile">("desk")
+  const [activeTab, setActiveTab] = React.useState<"desk" | "profile">("desk")
   const [showCreateModal, setShowCreateModal] = React.useState(false)
   const [notificationMessage, setNotificationMessage] = React.useState<string | null>(null)
 
@@ -197,9 +196,6 @@ export default function DashboardPage() {
         operatorName={user?.first_name || "Sarah Miller"}
         operatorStatus={operatorStatus}
         onStatusChange={setOperatorStatus}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onCreateTicket={() => setShowCreateModal(true)}
         escalatedCount={escalatedCount}
         onLogout={isAuthenticated ? handleLogout : undefined}
       />
@@ -240,19 +236,11 @@ export default function DashboardPage() {
 
             <div className="flex flex-wrap items-center gap-2.5 shrink-0">
               <Button
-                onClick={() => setActiveTab("simulator")}
-                variant="outline"
-                className="border-slate-200 text-slate-700 hover:text-[#2563EB] font-semibold rounded-xl text-xs h-10 px-3.5 flex items-center gap-2 cursor-pointer"
-              >
-                <Play className="size-3.5 text-[#2563EB] fill-[#2563EB]" />
-                <span>Problem Simulator</span>
-              </Button>
-              <Button
                 onClick={() => setShowCreateModal(true)}
                 className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-semibold rounded-xl text-xs h-10 px-4 shadow-xs flex items-center gap-2 cursor-pointer"
               >
                 <Plus className="size-3.5" />
-                <span>+ Create Ticket</span>
+                <span>Create Ticket</span>
               </Button>
             </div>
           </div>
@@ -276,18 +264,6 @@ export default function DashboardPage() {
             >
               <Headphones className="size-4" />
               <span>Live Support Desk ({escalatedCount})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("simulator")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                activeTab === "simulator"
-                  ? "bg-white text-[#2563EB] shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Play className="size-4 text-violet-600 fill-violet-500" />
-              <span>Agentic Simulator</span>
             </button>
 
             <button
@@ -315,8 +291,6 @@ export default function DashboardPage() {
               searchFilter={searchQuery}
             />
           )}
-
-          {activeTab === "simulator" && <SimulatorTab />}
 
           {activeTab === "profile" && (
             <div className="space-y-6">
@@ -405,9 +379,6 @@ export default function DashboardPage() {
           <div className="flex items-center gap-5">
             <Link href="/" className="hover:text-slate-800 transition-colors">
               Landing Page
-            </Link>
-            <Link href="/#simulator" className="hover:text-slate-800 transition-colors">
-              Landing Simulator
             </Link>
             <Link href="/#handoff" className="hover:text-slate-800 transition-colors">
               Handoff Desk Section

@@ -4,13 +4,9 @@ import * as React from "react"
 import Link from "next/link"
 import {
   Bot,
-  Search,
-  Sparkles,
-  Plus,
   LogOut,
   ChevronDown,
   Headphones,
-  ArrowRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -19,9 +15,6 @@ interface DashboardHeaderProps {
   operatorName: string
   operatorStatus: "available" | "busy" | "away"
   onStatusChange: (status: "available" | "busy" | "away") => void
-  searchQuery: string
-  onSearchChange: (query: string) => void
-  onCreateTicket: () => void
   escalatedCount: number
   onLogout?: () => void
 }
@@ -30,9 +23,6 @@ export function DashboardHeader({
   operatorName,
   operatorStatus,
   onStatusChange,
-  searchQuery,
-  onSearchChange,
-  onCreateTicket,
   escalatedCount,
   onLogout,
 }: DashboardHeaderProps) {
@@ -119,51 +109,13 @@ export function DashboardHeader({
           </div>
         </div>
 
-        {/* Center: Search input */}
-        <div className="hidden md:flex items-center flex-1 max-w-md mx-2">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search by customer, ticket #, order ID, intent..."
-              className="w-full h-9 pl-9 pr-3 rounded-xl border border-slate-200 bg-slate-50/80 text-xs text-[#0F172A] placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] transition"
-            />
-          </div>
-        </div>
-
         {/* Right: Quick actions */}
         <div className="flex items-center gap-2 sm:gap-2.5">
-          {/* Create New Ticket */}
-          <Button
-            size="sm"
-            onClick={onCreateTicket}
-            className="bg-gradient-to-r from-[#2563EB] to-[#8B5CF6] hover:from-[#1D4ED8] hover:to-[#7C3AED] text-white font-semibold rounded-xl text-xs h-9 px-3.5 shadow-xs flex items-center gap-1.5 cursor-pointer"
-            title="Create a new customer ticket"
-          >
-            <Plus className="size-3.5" />
-            <span className="hidden sm:inline">+ Create Ticket</span>
-            <span className="sm:hidden">+ Ticket</span>
-          </Button>
-
           {/* Live Queue Badge */}
-          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800">
             <Headphones className="size-3.5 text-amber-600" />
             <span>{escalatedCount} Escalated</span>
           </div>
-
-          {/* Return to Landing */}
-          <Link href="/">
-            <Button
-              variant="outline"
-              size="sm"
-              className="font-semibold text-slate-700 hover:text-[#2563EB] rounded-xl border-slate-200 h-9 px-3 text-xs hidden sm:flex items-center gap-1.5"
-            >
-              <span>Landing</span>
-              <ArrowRight className="size-3" />
-            </Button>
-          </Link>
 
           {/* User profile / Logout */}
           {onLogout && (

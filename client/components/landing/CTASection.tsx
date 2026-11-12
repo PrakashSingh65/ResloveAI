@@ -24,20 +24,20 @@ export function CTASection() {
             </h2>
 
             <p className="text-slate-300 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-              Experience the combination of LLM understanding, RAG document search, and intelligent human escalation. Boost resolution rates by 72% while your human team focuses on high-impact customer relationships.
+              Experience the combination of high-speed LLM reasoning, smart friction detection, and zero-repetition human escalation. Boost resolution rates while your human team focuses on high-impact customer care.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-              <a href="#simulator" className="w-full sm:w-auto">
+              <a href="/dashboard" className="w-full sm:w-auto">
                 <Button
                   size="lg"
                   className="w-full sm:w-auto bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-semibold text-base px-8 h-12 shadow-lg shadow-[#2563EB]/30 rounded-xl"
                 >
-                  Test Interactive Demo
+                  Launch Live Support Desk
                   <ArrowRight className="size-4.5 ml-2" />
                 </Button>
               </a>
-              <a href="#handoff" className="w-full sm:w-auto">
+              <a href="#features" className="w-full sm:w-auto">
                 <Button
                   variant="outline"
                   size="lg"

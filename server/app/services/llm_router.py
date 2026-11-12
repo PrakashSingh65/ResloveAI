@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from app.core.config import settings
@@ -53,8 +54,10 @@ class LLMRouter:
             )
             return res.text if res and res.text else None
 
-        candidates = [getattr(settings, "GEMINI_MODEL", "gemini-3.8-flash")]
-        for model_name in candidates:
+        gemini_model_setting = getattr(settings, "GEMINI_MODEL", "gemini-3.8-flash")
+        candidates = [gemini_model_setting, "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash"]
+        seen = set()
+        for model_name in [m for m in candidates if m and not (m in seen or seen.add(m))]:
             try:
                 text = await asyncio.wait_for(
                     asyncio.to_thread(_sync_call, model_name),
@@ -142,7 +145,7 @@ JSON:"""
                     continue
 
         # 2. Try Gemini with candidate fallbacks
-        gemini_text = cls._generate_gemini_content(prompt)
+        gemini_text = await cls._generate_gemini_content(prompt)
         if gemini_text:
             try:
                 cleaned = gemini_text.strip().replace("```json", "").replace("```", "").strip()

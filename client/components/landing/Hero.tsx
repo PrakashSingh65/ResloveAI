@@ -61,16 +61,16 @@ export function Hero() {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
-            <a href="#simulator" className="w-full sm:w-auto">
+            <a href="/dashboard" className="w-full sm:w-auto">
               <Button
                 size="lg"
                 className="w-full sm:w-auto bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-lg shadow-[#2563EB]/25 font-semibold text-base px-8 h-12"
               >
-                Launch Live Simulator
+                Launch Support Desk
                 <ArrowRight className="size-4.5 ml-2" />
               </Button>
             </a>
-            <a href="#handoff" className="w-full sm:w-auto">
+            <a href="#features" className="w-full sm:w-auto">
               <Button
                 variant="outline"
                 size="lg"

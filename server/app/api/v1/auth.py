@@ -18,6 +18,7 @@ from app.schemas.auth import (
     GoogleAuthUrlResponse,
     GoogleSyncRequest,
     MessageResponse,
+    RefreshTokenRequest,
     UserLogin,
     UserRegister,
     UserResponse,
@@ -156,20 +157,32 @@ async def login(
     "/refresh",
     response_model=AuthResponse,
     summary="Rotate refresh token cookie & issue new access token cookie",
-    description="Reads the refresh token from HttpOnly cookie, performs rotation, and updates cookies.",
+    description="Reads the refresh token from HttpOnly cookie, body, or header, performs rotation with grace period, and updates cookies.",
 )
 async def refresh_tokens(
     request: Request,
     response: Response,
+    payload: Optional[RefreshTokenRequest] = None,
     db: AsyncSession = Depends(get_db),
 ):
-    # Extract refresh token from HttpOnly cookie
+    # Extract refresh token: primary from HttpOnly cookie, fallback to body / header
     raw_refresh_token = request.cookies.get(settings.COOKIE_REFRESH_NAME)
+    if not raw_refresh_token and payload and payload.refresh_token:
+        raw_refresh_token = payload.refresh_token.strip()
+
+    if not raw_refresh_token:
+        header_tok = request.headers.get("x-refresh-token")
+        if header_tok:
+            raw_refresh_token = header_tok.strip()
+        else:
+            auth_header = request.headers.get("authorization")
+            if auth_header and auth_header.startswith("Bearer "):
+                raw_refresh_token = auth_header.split(" ", 1)[1].strip()
 
     if not raw_refresh_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token cookie missing. Please log in.",
+            detail="Refresh token missing. Please log in.",
         )
 
     try:
@@ -205,10 +218,34 @@ async def refresh_tokens(
             detail="Unrecognized or invalid refresh token.",
         )
 
-    # Replay attack detection: If token was already revoked, someone might have stolen it!
+    # Replay attack detection with 60-second grace period for concurrent browser reloads / parallel requests
     if db_token.revoked:
+        is_within_grace_period = (
+            db_token.revoked_at is not None
+            and (now - ensure_utc(db_token.revoked_at)).total_seconds() < 60
+        )
+        if is_within_grace_period:
+            # Grace period active: another concurrent request rotated the token just now.
+            # Return new tokens for the active user without revoking the entire user session.
+            user_stmt = select(User).where(User.id == user_uuid)
+            user_res = await db.execute(user_stmt)
+            user = user_res.scalar_one_or_none()
+            if user and user.is_active:
+                access_token, new_refresh_token, _ = await issue_and_store_tokens(
+                    user=user, db=db, request=request
+                )
+                await db.commit()
+                await db.refresh(user)
+                set_auth_cookies(response=response, access_token=access_token, refresh_token=new_refresh_token)
+                return AuthResponse(
+                    message="Token refreshed successfully (within grace period).",
+                    user=UserResponse.model_validate(user),
+                    access_token=access_token,
+                    refresh_token=new_refresh_token,
+                )
+
         logger.warning(
-            f"Security Alert: Revoked refresh token reused for user {user_uuid}. Inactivating user token family."
+            f"Security Alert: Revoked refresh token reused for user {user_uuid} outside grace period. Inactivating user token family."
         )
         revoke_all_stmt = select(RefreshToken).where(
             RefreshToken.user_id == user_uuid,
