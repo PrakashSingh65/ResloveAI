@@ -11,9 +11,9 @@ const COMPARISON_ROWS = [
     resolveAi: "Guides active step-by-step verification and troubleshoots directly",
   },
   {
-    capability: "Knowledge Grounding (RAG)",
+    capability: "Domain & Policy Accuracy",
     traditional: "Static keyword triggers or generic LLM hallucinations",
-    resolveAi: "Direct vector search across internal policies, carrier SOPs & manuals",
+    resolveAi: "Direct alignment with company policies, carrier SOPs & warranty rules",
   },
   {
     capability: "Intent & Sentiment Tracking",

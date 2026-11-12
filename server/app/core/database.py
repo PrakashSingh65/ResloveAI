@@ -63,11 +63,5 @@ async def init_db() -> None:
     """Creates database tables asynchronously if they don't already exist."""
     async with engine.begin() as conn:
         logger.info("Initializing database tables...")
-        if not settings.async_database_url.startswith("sqlite"):
-            try:
-                from sqlalchemy import text
-                await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
-            except Exception as ext_err:
-                logger.warning(f"Note on vector extension initialization: {ext_err}")
         await conn.run_sync(SQLModel.metadata.create_all)
         logger.info("Database tables initialized successfully.")

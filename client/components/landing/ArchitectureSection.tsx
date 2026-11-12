@@ -37,10 +37,10 @@ export function ArchitectureSection() {
     },
     {
       step: "03",
-      name: "RAG Document Retrieval",
-      tech: "Vector DB • Dense Embeddings • Reranker",
-      desc: "Extracts grounded policies and carrier rules directly from enterprise SOPs to prevent hallucinations.",
-      icon: Database,
+      name: "Guardrails & PII Sanitization",
+      tech: "Regex Filters • Injection Detector • Security Layer",
+      desc: "Masks Credit Cards, SSNs, and credentials while rejecting prompt injection attempts in real-time.",
+      icon: Shield,
       accent: "text-[#2563EB]",
       bg: "bg-blue-50 border-blue-200",
     },
@@ -76,7 +76,7 @@ export function ArchitectureSection() {
             Engineered For Scale, Speed, and Zero Hallucination
           </h2>
           <p className="text-base sm:text-lg text-slate-600">
-            A production-grade architecture combining state-of-the-art LLM reasoning with real-time vector retrieval and human escalation protocols.
+            A production-grade architecture combining state-of-the-art LLM reasoning with automated diagnostic policies and zero-repetition human escalation protocols.
           </p>
         </div>
 

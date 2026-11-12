@@ -83,9 +83,9 @@ const STEPS: StepData[] = [
   },
   {
     step: 3,
-    title: "3. RAG Knowledge Search",
-    subtitle: "Retrieving verified policies & carrier delivery procedures",
-    chatAction: "Vector search queries internal SOPs for 'Carrier Safe Drop & Doorstep Checks'.",
+    title: "3. Diagnostic Policy Check",
+    subtitle: "Verifying delivery protocols & carrier safe-drop SOPs",
+    chatAction: "AI Agent cross-references standard operating procedures for 'Carrier Safe Drop & Doorstep Checks'.",
     aiThought: "Found SOP: 42% of false 'Delivered' statuses occur when couriers drop in building mailrooms, parcel lockers, or side porches. Photo on file shows blue porch door.",
     intent: "Missing Delivery Discrepancy",
     intentConfidence: "99.4%",
@@ -93,7 +93,7 @@ const STEPS: StepData[] = [
     sentimentLevel: "High",
     sentimentScore: 75,
     ragDoc: "Carrier_SOP_2026_Missing_Parcels.pdf (Clause 4.1)",
-    ragSimilarity: "0.98",
+    ragSimilarity: "Verified",
     ticketStatus: "Pending Troubleshooting",
     humanDeskStatus: "Standby",
     summaryBullets: [
@@ -238,7 +238,7 @@ export function InteractiveSimulator() {
             Watch ResolveAI Handle an E-Commerce Delivery Issue
           </h2>
           <p className="text-base sm:text-lg text-slate-600">
-            Follow the real-life journey: Customer reports a missing delivered parcel, the AI understands the problem, consults RAG docs, guides troubleshooting, and completes a zero-friction human escalation.
+            Follow the real-life journey: Customer reports a missing delivered parcel, the AI understands the problem, applies diagnostic SOPs, guides troubleshooting, and completes a zero-friction human escalation.
           </p>
         </div>
 
@@ -453,7 +453,7 @@ export function InteractiveSimulator() {
                   <Sparkles className="size-4" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-[#0F172A]">AI Agent Brain (LLM + RAG)</div>
+                  <div className="text-xs font-bold text-[#0F172A]">AI Agent Diagnostic Brain</div>
                   <div className="text-[10px] text-[#8B5CF6] font-medium">Agentic State Machine</div>
                 </div>
               </div>
@@ -509,14 +509,14 @@ export function InteractiveSimulator() {
                 </div>
               </div>
 
-              {/* RAG Retrieved Documents */}
+              {/* Diagnostic Policies */}
               <div className="p-3 rounded-xl bg-violet-50/50 border border-[#8B5CF6]/25 space-y-1.5">
                 <div className="flex items-center justify-between text-[10px] font-semibold text-[#8B5CF6]">
                   <span className="flex items-center gap-1">
                     <FileSearch className="size-3" />
-                    RAG Knowledge Grounding
+                    Diagnostic Policy Grounding
                   </span>
-                  <span className="font-mono text-slate-600">Sim: {currentStep.ragSimilarity}</span>
+                  <span className="font-mono text-slate-600">{currentStep.ragSimilarity}</span>
                 </div>
                 <p className="font-mono text-[10px] text-slate-800 bg-white p-2 rounded-lg border border-[#8B5CF6]/20 truncate">
                   {currentStep.ragDoc}

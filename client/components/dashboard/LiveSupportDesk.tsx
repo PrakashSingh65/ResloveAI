@@ -94,7 +94,6 @@ export function LiveSupportDesk({
 }: LiveSupportDeskProps) {
   const [statusTab, setStatusTab] = React.useState<"all" | "escalated" | "ai_troubleshooting" | "resolved">("all")
   const [inputText, setInputText] = React.useState("")
-  const [showRAGModal, setShowRAGModal] = React.useState(false)
   const [ticketToDelete, setTicketToDelete] = React.useState<Ticket | null>(null)
   const [actionSuccess, setActionSuccess] = React.useState<string | null>(null)
   const chatBottomRef = React.useRef<HTMLDivElement>(null)
@@ -398,7 +397,7 @@ export function LiveSupportDesk({
                 1. Intent
               </div>
               <div className="rounded-lg bg-emerald-100 text-emerald-800 p-1 text-[10px] font-bold border border-emerald-300">
-                2. RAG
+                2. Policy
               </div>
               <div className="rounded-lg bg-emerald-100 text-emerald-800 p-1 text-[10px] font-bold border border-emerald-300">
                 3. Troubleshoot
@@ -662,39 +661,7 @@ export function LiveSupportDesk({
           </div>
         </div>
 
-        {/* Card 2: Grounded RAG Knowledge Citation */}
-        <div className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs space-y-3">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <div className="flex items-center gap-1.5 font-extrabold text-xs text-[#0F172A]">
-              <FileText className="size-4 text-[#2563EB]" />
-              <span>Grounded RAG Citation</span>
-            </div>
-            <Badge variant="outline" className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border-emerald-200">
-              Cosine {selectedTicket.ragCitation.similarityScore}
-            </Badge>
-          </div>
-
-          <div className="space-y-1.5 text-xs">
-            <div className="font-bold text-[#0F172A] flex items-center justify-between">
-              <span>{selectedTicket.ragCitation.docName}</span>
-              <span className="text-[10px] text-slate-400 font-mono">
-                {selectedTicket.ragCitation.clauseNumber}
-              </span>
-            </div>
-            <p className="text-slate-600 text-[11px] leading-relaxed p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
-              &quot;{selectedTicket.ragCitation.snippet}&quot;
-            </p>
-            <button
-              onClick={() => setShowRAGModal(true)}
-              className="text-[11px] font-semibold text-[#2563EB] hover:underline flex items-center gap-1 pt-1"
-            >
-              <Eye className="size-3" />
-              <span>Inspect Raw Document Chunk</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Card 3: 1-Click Action Hub */}
+        {/* 1-Click Action Hub */}
         <div className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs space-y-3">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <div className="flex items-center gap-1.5 font-extrabold text-xs text-[#0F172A]">
@@ -750,61 +717,6 @@ export function LiveSupportDesk({
       </>
     )}
   </div>
-
-  {/* RAG Inspection Modal */}
-  {showRAGModal && selectedTicket && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-100">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl space-y-4 border border-slate-200">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-2 font-bold text-sm text-[#0F172A]">
-                <FileText className="size-4 text-[#2563EB]" />
-                <span>RAG Grounding Document Details</span>
-              </div>
-              <button
-                onClick={() => setShowRAGModal(false)}
-                className="size-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div>
-                <span className="font-bold text-slate-500 uppercase text-[10px]">
-                  Source Document
-                </span>
-                <p className="font-bold text-slate-900 text-sm">
-                  {selectedTicket.ragCitation.docName}
-                </p>
-                <p className="text-[11px] text-slate-400 font-mono">
-                  {selectedTicket.ragCitation.clauseNumber}
-                </p>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-                <span className="font-bold text-slate-500 uppercase text-[10px]">
-                  Retrieved Vector Chunk (Cosine: {selectedTicket.ragCitation.similarityScore})
-                </span>
-                <p className="text-slate-800 leading-relaxed font-mono text-[11px]">
-                  {selectedTicket.ragCitation.snippet}
-                </p>
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100">
-                <span>Vector Model: text-embedding-3-small</span>
-                <span>Grounding Accuracy: 99.4%</span>
-              </div>
-            </div>
-
-            <Button
-              onClick={() => setShowRAGModal(false)}
-              className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-semibold rounded-xl text-xs h-9"
-            >
-              Close Snippet Viewer
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Delete Ticket Confirmation Dialog */}
       {ticketToDelete && (

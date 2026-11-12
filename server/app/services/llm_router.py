@@ -73,7 +73,7 @@ class LLMRouter:
         Classifies user query intent and sentiment in under 200ms using Groq Fast Model.
         """
         # Testing environment bypass: return deterministic mock immediately
-        if settings.ENVIRONMENT == "testing":
+        if os.getenv("ENVIRONMENT") == "testing" or settings.ENVIRONMENT == "testing":
             lower = user_text.lower()
             intent = "General Inquiry"
             if any(w in lower for w in ["delivery", "tracking", "lost", "transit", "shipping", "fedex", "ups"]):
@@ -188,7 +188,7 @@ JSON:"""
         Primary: Groq Llama-3.3-70b
         Fallback: Google Gemini 2.5 Flash
         """
-        if settings.ENVIRONMENT == "testing":
+        if os.getenv("ENVIRONMENT") == "testing" or settings.ENVIRONMENT == "testing":
             yield "I have reviewed your inquiry and our company policy. Let me run our automated diagnostic check."
             return
 
@@ -240,87 +240,6 @@ JSON:"""
         # 3. Fallback simulated response
         yield "I understand your concern. Let me inspect your order records and run our automated diagnostic checks right away."
 
-    _hf_credits_available: Optional[bool] = None
-
-    @classmethod
-    async def get_embedding(cls, text: str) -> List[float]:
-        """
-        Generates 768-dimensional vector embedding for RAG work using langchain-huggingface.
-        Primary: LangChain HuggingFaceEndpointEmbeddings (sentence-transformers/all-mpnet-base-v2).
-        Fallback: Resilient deterministic semantic embedding (768 dimensions).
-        """
-        if settings.ENVIRONMENT == "testing" or cls._hf_credits_available is False:
-            return cls._generate_deterministic_embedding(text)
-
-        # 1. Attempt LangChain Hugging Face Embeddings
-        try:
-            import asyncio
-            from langchain_huggingface import HuggingFaceEndpointEmbeddings
-            from huggingface_hub import AsyncInferenceClient
-
-            model = getattr(settings, "HUGGINGFACE_EMBEDDING_MODEL", "sentence-transformers/all-mpnet-base-v2")
-            hf_token = getattr(settings, "HUGGINGFACE_API_KEY", None)
-
-            async_client = AsyncInferenceClient(token=hf_token, timeout=2.5)
-            hf_embeddings = HuggingFaceEndpointEmbeddings(
-                model=model,
-                async_client=async_client,
-            )
-            raw_vec = await asyncio.wait_for(hf_embeddings.aembed_query(text), timeout=3.0)
-            if raw_vec and isinstance(raw_vec, list) and len(raw_vec) > 0:
-                cls._hf_credits_available = True
-                return cls._normalize_vector_dim(raw_vec, 768)
-        except Exception as hf_err:
-            err_str = str(hf_err).lower()
-            if "402" in err_str or "credits" in err_str or "payment" in err_str or "401" in err_str:
-                logger.info(f"Hugging Face API returned auth/billing note: {hf_err}. Using resilient 768-dim semantic embedding.")
-                cls._hf_credits_available = False
-            else:
-                logger.warning(f"LangChain Hugging Face embedding call failed: {hf_err}. Using deterministic semantic vector...")
-
-        # 2. Resilient Deterministic Semantic Vector (768 dimensions)
-        return cls._generate_deterministic_embedding(text)
-
-    @classmethod
-    def _normalize_vector_dim(cls, vec: List[float], target_dim: int = 768) -> List[float]:
-        """Ensures vector matches exact pgvector column dimension."""
-        if len(vec) == target_dim:
-            return vec
-        if len(vec) > target_dim:
-            return vec[:target_dim]
-        repeats = (target_dim // len(vec)) + 1
-        return (vec * repeats)[:target_dim]
-
-    @classmethod
-    def _generate_deterministic_embedding(cls, text: str, dim: int = 768) -> List[float]:
-        """
-        Generates a consistent, vocabulary-sensitive 768-dim normalized dense vector.
-        Words in the text influence vector weights so similar texts share high cosine similarity.
-        """
-        import hashlib
-        import math
-
-        vector = [0.0] * dim
-        tokens = text.lower().strip().split()
-        if not tokens:
-            tokens = ["empty"]
-
-        for i, word in enumerate(tokens):
-            h = hashlib.sha256(word.encode("utf-8")).digest()
-            for j in range(min(len(h), 32)):
-                idx = (j * 24 + (i % 24)) % dim
-                val = ((h[j] / 255.0) - 0.5)
-                vector[idx] += val
-
-        # Whole-text hash seed
-        h_full = hashlib.sha256(text.encode("utf-8")).digest()
-        for k in range(dim):
-            vector[k] += ((h_full[k % len(h_full)] / 255.0) - 0.5) * 0.3
-
-        # L2 Normalize
-        norm = math.sqrt(sum(x * x for x in vector)) or 1.0
-        return [round(x / norm, 6) for x in vector]
-
     @classmethod
     async def generate_ai_briefing(
         cls,
@@ -332,7 +251,7 @@ JSON:"""
         """
         Synthesizes an AI Copilot Briefing for human operators using Google Gemini 2.5 Flash.
         """
-        if settings.ENVIRONMENT == "testing":
+        if os.getenv("ENVIRONMENT") == "testing" or settings.ENVIRONMENT == "testing":
             return {
                 "core_issue": "Customer reported an unresolved issue after standard diagnostic checks failed.",
                 "root_cause": "Carrier depot tracking anomaly or unverified hardware fault.",

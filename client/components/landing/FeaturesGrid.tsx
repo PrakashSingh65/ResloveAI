@@ -47,16 +47,16 @@ const FEATURES: FeatureItem[] = [
     accentColor: "from-[#2563EB] to-[#8B5CF6]",
   },
   {
-    id: "rag",
-    title: "RAG Knowledge Base",
-    description: "Retrieves accurate, hallucination-free answers grounded directly in your company documents, FAQs, and API manuals.",
-    icon: Database,
-    tag: "Grounded Truth",
+    id: "guardrails",
+    title: "Security & Guardrails",
+    description: "Automatic PII sanitization (Credit Cards, SSN, passwords) and prompt-injection defense before any LLM execution.",
+    icon: ShieldCheck,
+    tag: "Enterprise Safety",
     highlight: true,
     details: [
-      "Vector semantic search with hybrid reranking",
-      "Auto-sync with Notion, Confluence & Zendesk",
-      "Inline citation links for trust verification",
+      "Real-time sensitive PII masking",
+      "Prompt injection & jailbreak rejection",
+      "Enterprise audit & compliance ready",
     ],
     accentColor: "from-[#8B5CF6] to-[#6366F1]",
   },
@@ -156,7 +156,7 @@ const FEATURES: FeatureItem[] = [
   {
     id: "feedback",
     title: "Feedback System",
-    description: "Collects contextual CSAT and CES ratings right after resolution to continuously fine-tune RAG embeddings and agent workflows.",
+    description: "Collects contextual CSAT ratings right after resolution to continuously verify resolution quality and agent workflows.",
     icon: Star,
     tag: "Continuous Learning",
     details: [

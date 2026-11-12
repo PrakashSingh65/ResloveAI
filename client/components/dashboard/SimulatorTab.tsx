@@ -70,9 +70,9 @@ const SIMULATOR_STEPS: StepData[] = [
   },
   {
     step: 3,
-    title: "3. RAG Knowledge Search",
-    subtitle: "Retrieving verified policies & carrier delivery procedures",
-    chatAction: "Vector search queries internal SOPs for 'Carrier Safe Drop & Doorstep Checks'.",
+    title: "3. Diagnostic Policy Check",
+    subtitle: "Applying verified delivery protocols & carrier guidelines",
+    chatAction: "AI Agent applies company SOPs for 'Carrier Safe Drop & Doorstep Checks'.",
     aiThought: "Found SOP: 42% of false 'Delivered' statuses occur when couriers drop in building mailrooms, parcel lockers, or side porches. GPS indicates unit 14B doorstep.",
     intent: "Order Delivery Issue",
     intentConfidence: "99.4%",
@@ -204,7 +204,7 @@ export function SimulatorTab() {
             End-to-End Agentic Simulator
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 max-w-2xl mt-1">
-            Experience the exact problem scenario step-by-step: Customer reports missing delivered parcel → LLM comprehension → Intent classification → RAG lookup → Smart troubleshooting → Automated escalation → Zero-context handoff → 1-Click resolution.
+            Experience the exact problem scenario step-by-step: Customer reports missing delivered parcel → LLM comprehension → Intent classification → Policy verification → Smart troubleshooting → Automated escalation → Zero-repetition handoff → 1-Click resolution.
           </p>
         </div>
 
@@ -377,13 +377,13 @@ export function SimulatorTab() {
 
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase">
-                Grounded RAG Doc
+                Diagnostic Policy SOP
               </span>
               <div className="font-extrabold text-[#2563EB] truncate text-[11px]">
                 {step.ragDoc}
               </div>
-              <span className="text-[10px] text-slate-500 font-mono">
-                Cosine Match: {step.ragSimilarity}
+              <span className="text-[10px] text-emerald-600 font-semibold">
+                Status: Applied SOP
               </span>
             </div>
 

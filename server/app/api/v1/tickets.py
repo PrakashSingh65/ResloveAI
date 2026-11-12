@@ -259,18 +259,30 @@ async def seed_sample_tickets(db: AsyncSession = Depends(get_db)):
     db.add(DiagnosticStep(ticket_id=t1.id, step_number=2, title="Depot Exception Verification", instruction="Verify sorting facility automated alert code", status=StepStatus.FAILED, result_note="Station Code 404 - Pallet tag missing"))
     db.add(DiagnosticStep(ticket_id=t1.id, step_number=3, title="Carrier Escalation Ping", instruction="Open urgent carrier investigation ticket", status=StepStatus.PENDING))
 
-    # Add AI Briefing
-    db.add(AIBriefing(
-        ticket_id=t1.id,
-        core_issue="Customer ordered enterprise server chassis; shipment stalled in Memphis hub for 98 hours with no departure scan.",
-        root_cause="Carrier hub automated sorting jam resulted in lost secondary routing slip. Physical pallet cannot be located in current cycle.",
-        attempted_steps=["FedEx Carrier Gateway Telemetry Polled", "Depot Exception Alert 404 Triggered", "Automated Tracer Ping Initiated"],
-        recommended_action="Execute 1-click priority inventory replacement dispatch from Chicago warehouse via Next-Day Air.",
-        recommended_action_label="Dispatch Replacement",
-        confidence=0.96,
-        urgency_score=0.94,
-        sentiment_summary="Frustrated - Customer SLA breached; mission critical business delivery.",
-    ))
+    # Update or add AI Briefing safely
+    briefing_stmt = select(AIBriefing).where(AIBriefing.ticket_id == t1.id)
+    b1 = (await db.execute(briefing_stmt)).scalars().first()
+    if b1:
+        b1.core_issue = "Customer ordered enterprise server chassis; shipment stalled in Memphis hub for 98 hours with no departure scan."
+        b1.root_cause = "Carrier hub automated sorting jam resulted in lost secondary routing slip. Physical pallet cannot be located in current cycle."
+        b1.attempted_steps = ["FedEx Carrier Gateway Telemetry Polled", "Depot Exception Alert 404 Triggered", "Automated Tracer Ping Initiated"]
+        b1.recommended_action = "Execute 1-click priority inventory replacement dispatch from Chicago warehouse via Next-Day Air."
+        b1.recommended_action_label = "Dispatch Replacement"
+        b1.confidence = 0.96
+        b1.urgency_score = 0.94
+        b1.sentiment_summary = "Frustrated - Customer SLA breached; mission critical business delivery."
+    else:
+        db.add(AIBriefing(
+            ticket_id=t1.id,
+            core_issue="Customer ordered enterprise server chassis; shipment stalled in Memphis hub for 98 hours with no departure scan.",
+            root_cause="Carrier hub automated sorting jam resulted in lost secondary routing slip. Physical pallet cannot be located in current cycle.",
+            attempted_steps=["FedEx Carrier Gateway Telemetry Polled", "Depot Exception Alert 404 Triggered", "Automated Tracer Ping Initiated"],
+            recommended_action="Execute 1-click priority inventory replacement dispatch from Chicago warehouse via Next-Day Air.",
+            recommended_action_label="Dispatch Replacement",
+            confidence=0.96,
+            urgency_score=0.94,
+            sentiment_summary="Frustrated - Customer SLA breached; mission critical business delivery.",
+        ))
 
     # Seed 2: Hardware failure AI troubleshooting
     t2 = await TicketService.create_ticket(

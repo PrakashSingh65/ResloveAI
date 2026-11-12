@@ -6,10 +6,6 @@ import { useRouter } from "next/navigation"
 import {
   Sparkles,
   Headphones,
-  Database,
-  GitBranch,
-  BrainCircuit,
-  HeartHandshake,
   Play,
   User,
   ShieldCheck,
@@ -26,10 +22,6 @@ import { useAuth } from "@/lib/auth-context"
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader"
 import { MetricsOverview } from "@/components/dashboard/MetricsOverview"
 import { LiveSupportDesk } from "@/components/dashboard/LiveSupportDesk"
-import { RAGKnowledgeView } from "@/components/dashboard/RAGKnowledgeView"
-import { TroubleshootingFlowView } from "@/components/dashboard/TroubleshootingFlowView"
-import { SentimentIntentView } from "@/components/dashboard/SentimentIntentView"
-import { FeedbackCSATView } from "@/components/dashboard/FeedbackCSATView"
 import { SimulatorTab } from "@/components/dashboard/SimulatorTab"
 import { CreateTicketModal } from "@/components/dashboard/CreateTicketModal"
 import { INITIAL_TICKETS } from "@/components/dashboard/dashboard-data"
@@ -43,9 +35,7 @@ export default function DashboardPage() {
   const [selectedTicket, setSelectedTicket] = React.useState<Ticket | null>(null)
   const [searchQuery, setSearchQuery] = React.useState("")
   const [operatorStatus, setOperatorStatus] = React.useState<"available" | "busy" | "away">("available")
-  const [activeTab, setActiveTab] = React.useState<
-    "desk" | "rag" | "troubleshooting" | "sentiment" | "csat" | "simulator" | "profile"
-  >("desk")
+  const [activeTab, setActiveTab] = React.useState<"desk" | "simulator" | "profile">("desk")
   const [showCreateModal, setShowCreateModal] = React.useState(false)
   const [notificationMessage, setNotificationMessage] = React.useState<string | null>(null)
 
@@ -289,54 +279,6 @@ export default function DashboardPage() {
             </button>
 
             <button
-              onClick={() => setActiveTab("rag")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                activeTab === "rag"
-                  ? "bg-white text-[#2563EB] shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Database className="size-4 text-[#2563EB]" />
-              <span>RAG Knowledge Store</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("troubleshooting")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                activeTab === "troubleshooting"
-                  ? "bg-white text-[#2563EB] shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <GitBranch className="size-4 text-[#8B5CF6]" />
-              <span>Smart Troubleshooting Trees</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("sentiment")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                activeTab === "sentiment"
-                  ? "bg-white text-[#2563EB] shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <BrainCircuit className="size-4 text-emerald-600" />
-              <span>Sentiment & Intent</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("csat")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                activeTab === "csat"
-                  ? "bg-white text-[#2563EB] shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <HeartHandshake className="size-4 text-amber-500" />
-              <span>Feedback & CSAT</span>
-            </button>
-
-            <button
               onClick={() => setActiveTab("simulator")}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                 activeTab === "simulator"
@@ -373,14 +315,6 @@ export default function DashboardPage() {
               searchFilter={searchQuery}
             />
           )}
-
-          {activeTab === "rag" && <RAGKnowledgeView />}
-
-          {activeTab === "troubleshooting" && <TroubleshootingFlowView />}
-
-          {activeTab === "sentiment" && <SentimentIntentView />}
-
-          {activeTab === "csat" && <FeedbackCSATView />}
 
           {activeTab === "simulator" && <SimulatorTab />}
 

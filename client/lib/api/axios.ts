@@ -34,12 +34,6 @@ export const API_ROUTES = {
     FEEDBACK: (id: string) => `${API_BASE_URL}/tickets/${id}/feedback`,
     SEED: `${API_BASE_URL}/tickets/seed-sample`,
   },
-  KNOWLEDGE: {
-    DOCUMENTS: `${API_BASE_URL}/knowledge/documents`,
-    DETAIL: (id: string) => `${API_BASE_URL}/knowledge/documents/${id}`,
-    QUERY: `${API_BASE_URL}/knowledge/query`,
-    SEED: `${API_BASE_URL}/knowledge/seed`,
-  },
 } as const
 
 // Create standard Axios instance configured for FastAPI backend

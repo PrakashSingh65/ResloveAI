@@ -56,7 +56,7 @@ export function Hero() {
           </h1>
 
           <p className="text-lg sm:text-xl text-slate-600 max-w-xl mx-auto leading-relaxed">
-            Automate issue resolution with RAG intelligence and seamless, full-context human handoffs.
+            Automate issue resolution with intelligent AI diagnostics and seamless, zero-repetition human handoffs.
           </p>
 
           {/* Action Buttons */}
@@ -90,7 +90,7 @@ export function Hero() {
             </div>
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="size-4 text-[#8B5CF6]" />
-              <span>RAG Document Grounding</span>
+              <span>AI Diagnostic Policies</span>
             </div>
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="size-4 text-emerald-600" />
@@ -243,20 +243,20 @@ export function Hero() {
                   </div>
                 </div>
 
-                {/* RAG Knowledge Grounding */}
+                {/* Diagnostic Policy Verification */}
                 <div className="p-3 rounded-xl bg-white border border-[#E2E8F0] space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
                       <FileText className="size-3.5 text-[#8B5CF6]" />
-                      RAG Document Retrieval
+                      Diagnostic Policy Verification
                     </span>
-                    <span className="text-[10px] font-mono text-slate-400">Vector Match: 0.94</span>
+                    <span className="text-[10px] font-mono text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Policy Verified</span>
                   </div>
                   <p className="text-[11px] text-slate-600 font-mono bg-slate-50 p-2 rounded-lg border border-slate-100">
-                    &quot;docs/logistics/lost_in_transit_sop.md#section-4&quot;
+                    &quot;Standard Carrier SOP #Clause-4.2&quot;
                   </p>
                   <p className="text-[11px] text-slate-500">
-                    Rule triggered: If customer confirms not located, issue ticket & dispatch to human tier.
+                    Rule triggered: If doorstep check is negative, prepare briefing &amp; handoff to human desk.
                   </p>
                 </div>
 
@@ -288,9 +288,9 @@ export function Hero() {
             <div className="text-[11px] text-slate-500 mt-0.5">Resolved without human intervention</div>
           </div>
           <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 text-center shadow-xs">
-            <div className="text-3xl font-extrabold text-[#8B5CF6]">&lt; 1.2s</div>
-            <div className="text-xs font-semibold text-slate-800 mt-1">RAG Response Latency</div>
-            <div className="text-[11px] text-slate-500 mt-0.5">Grounded in company documents</div>
+            <div className="text-3xl font-extrabold text-[#8B5CF6]">&lt; 300ms</div>
+            <div className="text-xs font-semibold text-slate-800 mt-1">Diagnostic Latency</div>
+            <div className="text-[11px] text-slate-500 mt-0.5">Instant triage &amp; escalation evaluation</div>
           </div>
           <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 text-center shadow-xs">
             <div className="text-3xl font-extrabold text-[#2563EB]">100%</div>

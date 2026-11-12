@@ -9,14 +9,6 @@ from app.schemas.auth import (
     UserRegister,
     UserResponse,
 )
-from app.schemas.knowledge import (
-    DocumentChunkSchema,
-    KnowledgeDocumentCreate,
-    KnowledgeDocumentSchema,
-    RAGCitation,
-    RAGQueryRequest,
-    RAGQueryResponse,
-)
 from app.schemas.ticket import (
     AIBriefingCreate,
     AIBriefingSchema,
@@ -62,11 +54,4 @@ __all__ = [
     "TicketSummaryResponse",
     "TicketDetailResponse",
     "TicketMetricsResponse",
-    # RAG & Knowledge
-    "DocumentChunkSchema",
-    "KnowledgeDocumentSchema",
-    "KnowledgeDocumentCreate",
-    "RAGCitation",
-    "RAGQueryRequest",
-    "RAGQueryResponse",
 ]
